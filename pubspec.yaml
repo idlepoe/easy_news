@@ -1,0 +1,56 @@
+name: easy_news
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+environment:
+  sdk: ^3.8.1
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  get_cli: ^1.9.1
+  get: ^4.7.2
+  logger: ^2.6.0
+  freezed: ^3.0.6
+  json_annotation: ^4.9.0
+  dio: ^5.4.0
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.3
+  cloud_firestore: ^5.6.11
+  firebase_storage: ^12.3.5
+  firebase_database: ^11.1.5
+  youtube_player_iframe: ^5.2.0
+  shared_preferences: ^2.2.2
+  image_picker: ^1.0.4
+  intl: ^0.19.0
+  marquee: ^2.2.3
+  url_launcher: ^6.2.4
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.4
+  google_fonts: ^6.2.1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.5.4
+  json_serializable: ^6.9.5
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+    - assets/icon/
+flutter_launcher_icons:
+  android: "launcher_icon"
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_foreground: "assets/icon/icon.png"
+  adaptive_icon_background: "#f8e8fd"
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    background_color: "#f8e8fd"
+    theme_color: "#f8e8fd"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon-removebg.ico"
+    background_color: "#f8e8fd"
+    theme_color: "#f8e8fd"
