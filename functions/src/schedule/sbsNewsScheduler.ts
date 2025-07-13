@@ -10,7 +10,8 @@ import { saveNewsToFirestore } from "../services/firestoreService";
 export const sbsNewsScheduler = onSchedule({
   schedule: "every 1 hours",
   timeZone: "Asia/Seoul",
-  retryCount: 3
+  retryCount: 3,
+  timeoutSeconds: 1800 // 30분 (AI 요청을 위한 충분한 시간)
 }, async (event) => {
   try {
     logger.info("SBS 뉴스 스케줄러가 시작되었습니다.");

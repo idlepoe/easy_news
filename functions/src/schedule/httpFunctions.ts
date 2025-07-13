@@ -6,7 +6,9 @@ import { saveNewsToFirestore, getRecentNews } from "../services/firestoreService
 /**
  * 수동으로 뉴스를 가져오는 HTTP 함수 (테스트용)
  */
-export const fetchNewsManually = onRequest(async (request, response) => {
+export const fetchNewsManually = onRequest({
+  timeoutSeconds: 540 // 9분 (AI 요청을 위한 충분한 시간)
+}, async (request, response) => {
   try {
     logger.info("수동 뉴스 가져오기가 요청되었습니다.");
     
@@ -42,7 +44,9 @@ export const fetchNewsManually = onRequest(async (request, response) => {
 /**
  * 최근 뉴스를 가져오는 HTTP 함수
  */
-export const getRecentNewsAPI = onRequest(async (request, response) => {
+export const getRecentNewsAPI = onRequest({
+  timeoutSeconds: 540 // 9분 (단순 조회이므로 짧게)
+}, async (request, response) => {
   try {
     logger.info("최근 뉴스 조회가 요청되었습니다.");
     
@@ -76,7 +80,9 @@ export const getRecentNewsAPI = onRequest(async (request, response) => {
 /**
  * 뉴스 상태 확인 HTTP 함수
  */
-export const getNewsStatus = onRequest(async (request, response) => {
+export const getNewsStatus = onRequest({
+  timeoutSeconds: 540 // 9분 (단순 조회이므로 짧게)
+}, async (request, response) => {
   try {
     logger.info("뉴스 상태 확인이 요청되었습니다.");
     

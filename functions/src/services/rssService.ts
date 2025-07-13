@@ -2,7 +2,7 @@ import axios from "axios";
 import * as xml2js from "xml2js";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
-import { NewsItem, RSSItem } from "../models/news";
+import { NewsItem, RSSItem, Entity } from "../models/news";
 import { extractSBSNewsContent } from "../utils/htmlUtils";
 import { VertexAI } from "@google-cloud/vertexai";
 import 'dotenv/config'
@@ -162,6 +162,130 @@ JSON만 응답하고 다른 설명은 포함하지 마세요.
 }
 
 /**
+ * Gemini로 뉴스 본문에서 엔터티 추출 (배치 처리)
+ */
+async function extractEntitiesFromNewsBatch(newsList: NewsItem[]): Promise<Entity[][]> {
+  if (newsList.length === 0) {
+    return [];
+  }
+
+  // 뉴스 제목과 본문 준비
+  const newsData = newsList.map((item, index) => ({
+    id: index + 1,
+    title: item.title,
+    content: item.description || item.title
+  }));
+
+  const batchPrompt = `
+다음 ${newsData.length}개의 뉴스 기사에서 인명, 국가, 기관, 장소, 회사명을 각각 구분하여 JSON 배열로 반환해주세요.
+
+뉴스 목록:
+${newsData.map(news => `
+${news.id}. ${news.title}
+내용: ${news.content}
+`).join('\n')}
+
+각 뉴스에 대해 다음 정보를 제공해주세요:
+- text: 본문에서 발견된 단어/구문
+- type: 엔터티 타입 (PERSON: 인명, COUNTRY: 국가, ORGANIZATION: 기관, LOCATION: 장소, COMPANY: 회사명)
+- description: 해당 엔터티에 대한 짧은 1줄 설명
+
+응답 형식:
+{
+  "entities": [
+    {
+      "newsId": 1,
+      "entities": [
+        {
+          "text": "윤석열",
+          "type": "PERSON", 
+          "description": "대한민국 대통령"
+        },
+        {
+          "text": "서울",
+          "type": "LOCATION",
+          "description": "대한민국 수도"
+        }
+      ]
+    },
+    {
+      "newsId": 2,
+      "entities": [
+        {
+          "text": "삼성전자",
+          "type": "COMPANY",
+          "description": "대한민국 전자기업"
+        }
+      ]
+    }
+  ]
+}
+
+JSON만 응답하고 다른 설명은 포함하지 마세요. 엔터티가 없으면 빈 배열을 반환하세요.
+`;
+
+  logger.info(`[Gemini] 엔터티 배치 추출 요청 시작 (${newsData.length}개 뉴스)`);
+  
+  try {
+    const result = await generativeModel.generateContent({ 
+      contents: [{ role: "user", parts: [{ text: batchPrompt }] }] 
+    });
+    
+    const responseText = result.response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    logger.info(`[Gemini] 엔터티 배치 응답 받음: ${responseText.substring(0, 200)}...`);
+    
+    // JSON 파싱
+    let parsedResponse;
+    try {
+      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       responseText.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? jsonMatch[1] || jsonMatch[0] : responseText;
+      parsedResponse = JSON.parse(jsonText);
+    } catch (parseError) {
+      logger.error("엔터티 JSON 파싱 오류:", parseError, "응답:", responseText);
+      // 오류 시 빈 배열들 반환
+      return new Array(newsData.length).fill([]);
+    }
+    
+    // 결과 배열 생성
+    const entitiesResults: Entity[][] = [];
+    
+    if (parsedResponse.entities && Array.isArray(parsedResponse.entities)) {
+      for (let i = 0; i < newsData.length; i++) {
+        const newsEntities = parsedResponse.entities.find((item: any) => item.newsId === i + 1);
+        if (newsEntities && newsEntities.entities && Array.isArray(newsEntities.entities)) {
+          const entities: Entity[] = [];
+          for (const entity of newsEntities.entities) {
+            if (entity.text && entity.type && entity.description) {
+              entities.push({
+                text: entity.text,
+                type: entity.type,
+                description: entity.description
+              });
+            }
+          }
+          entitiesResults.push(entities);
+          logger.info(`[Gemini] 뉴스 ${i + 1} 엔터티 추출 완료: ${entities.length}개`);
+        } else {
+          entitiesResults.push([]);
+          logger.warn(`[Gemini] 뉴스 ${i + 1} 엔터티 데이터 없음`);
+        }
+      }
+    } else {
+      logger.error("예상된 엔터티 JSON 구조가 아닙니다:", parsedResponse);
+      // 빈 배열들 반환
+      return new Array(newsData.length).fill([]);
+    }
+    
+    return entitiesResults;
+  } catch (err) {
+    logger.error("Gemini 엔터티 배치 추출 오류:", err);
+    // 오류 시 빈 배열들 반환
+    return new Array(newsData.length).fill([]);
+  }
+}
+
+/**
  * RSS 피드에서 뉴스 데이터를 가져오는 함수
  * @returns Promise<NewsItem[]> 뉴스 아이템 배열
  */
@@ -233,16 +357,21 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
 
     logger.info(`${newsItems.length}개의 뉴스 아이템을 성공적으로 가져왔습니다.`);
 
-    // 상위 10개만 Gemini 요약
+    // 상위 10개만 Gemini 요약 및 엔터티 추출
     const top10 = newsItems.slice(0, 10);
     const { summary, summary3lines, easySummary } = await summarizeNewsBatch(top10);
     logger.info("Gemini 요약 결과", { summary, summary3lines, easySummary });
 
-    // 요약 결과를 각 뉴스에 추가
+    // 엔터티 추출
+    const entitiesResults = await extractEntitiesFromNewsBatch(top10);
+    logger.info("Gemini 엔터티 추출 결과", { entitiesCount: entitiesResults.map(e => e.length) });
+
+    // 요약 결과와 엔터티를 각 뉴스에 추가
     for (let i = 0; i < top10.length; i++) {
       top10[i].summary = summary[i] || '';
       top10[i].summary3lines = summary3lines[i] || '';
       top10[i].easySummary = easySummary[i] || '';
+      top10[i].entities = entitiesResults[i] || [];
     }
 
     // 나머지 뉴스는 요약 없이 반환
