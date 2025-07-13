@@ -147,3 +147,36 @@ export async function getRecentNews(limit: number = 10): Promise<NewsItem[]> {
     throw error;
   }
 } 
+
+/**
+ * 문서 ID로 뉴스 상세를 반환하는 함수
+ * @param docId Firestore 문서 ID
+ * @returns Promise<NewsItem | null>
+ */
+export async function getNewsDetailById(docId: string): Promise<NewsItem | null> {
+  try {
+    const doc = await db.collection('news').doc(docId).get();
+    if (!doc.exists) return null;
+    return doc.data() as NewsItem;
+  } catch (error) {
+    logger.error(`뉴스 상세 조회 중 오류 발생 (docId: ${docId}):`, error);
+    throw error;
+  }
+}
+
+/**
+ * 문서 ID로 조회수를 1 증가시키는 함수
+ * @param docId Firestore 문서 ID
+ * @returns Promise<void>
+ */
+export async function increaseNewsViewCount(docId: string): Promise<void> {
+  try {
+    const docRef = db.collection('news').doc(docId);
+    await docRef.set({
+      viewCount: admin.firestore.FieldValue.increment(1)
+    }, { merge: true });
+  } catch (error) {
+    logger.error(`뉴스 조회수 증가 중 오류 발생 (docId: ${docId}):`, error);
+    throw error;
+  }
+} 

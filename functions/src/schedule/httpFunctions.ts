@@ -1,7 +1,8 @@
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { fetchNewsFromRSS } from "../services/rssService";
-import { saveNewsToFirestore, getRecentNews } from "../services/firestoreService";
+import { saveNewsToFirestore, getRecentNews, getNewsDetailById, increaseNewsViewCount } from "../services/firestoreService";
+import * as admin from "firebase-admin";
 
 /**
  * 수동으로 뉴스를 가져오는 HTTP 함수 (테스트용)
@@ -105,5 +106,63 @@ export const getNewsStatus = onRequest({
       message: "뉴스 상태 확인 중 오류가 발생했습니다.",
       error: error instanceof Error ? error.message : "Unknown error"
     });
+  }
+}); 
+
+/**
+ * 뉴스 목록을 페이지네이션으로 반환하는 HTTP 함수
+ * 쿼리: page(1부터), pageSize(기본 10, 최대 100)
+ */
+export const getNewsListAPI = onRequest({
+  timeoutSeconds: 60
+}, async (request, response) => {
+  try {
+    logger.info("뉴스 목록 페이지네이션 조회 요청");
+    const page = Math.max(1, parseInt(request.query.page as string) || 1);
+    const pageSize = Math.min(Math.max(1, parseInt(request.query.pageSize as string) || 10), 100);
+    const offset = (page - 1) * pageSize;
+    // Firestore는 offset 지원, 단 성능 이슈 주의
+    const snapshot = await admin.firestore().collection('news')
+      .orderBy('createdAt', 'desc')
+      .offset(offset)
+      .limit(pageSize)
+      .get();
+    const news = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    response.json({
+      success: true,
+      message: `${news.length}건의 뉴스 목록을 반환합니다.`,
+      data: { page, pageSize, count: news.length, news }
+    });
+  } catch (error) {
+    logger.error("뉴스 목록 페이지네이션 조회 오류:", error);
+    response.status(500).json({ success: false, message: "뉴스 목록 조회 오류", error: error instanceof Error ? error.message : error });
+  }
+});
+
+/**
+ * 뉴스 상세를 반환하고 조회수 증가까지 처리하는 HTTP 함수
+ * 쿼리: docId(필수)
+ */
+export const getNewsDetailAPI = onRequest({
+  timeoutSeconds: 30
+}, async (request, response) => {
+  try {
+    const docId = request.query.docId as string;
+    if (!docId) {
+      response.status(400).json({ success: false, message: "docId 파라미터가 필요합니다." });
+      return;
+    }
+    // 상세 조회
+    const news = await getNewsDetailById(docId);
+    if (!news) {
+      response.status(404).json({ success: false, message: "해당 뉴스가 존재하지 않습니다." });
+      return;
+    }
+    // 조회수 증가
+    await increaseNewsViewCount(docId);
+    response.json({ success: true, message: "뉴스 상세 반환 및 조회수 증가 완료", data: news });
+  } catch (error) {
+    logger.error("뉴스 상세 조회/조회수 증가 오류:", error);
+    response.status(500).json({ success: false, message: "뉴스 상세 조회 오류", error: error instanceof Error ? error.message : error });
   }
 }); 
