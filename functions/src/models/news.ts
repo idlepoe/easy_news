@@ -8,6 +8,9 @@ export interface NewsItem {
   guid: string;
   category?: string;
   mediaUrl?: string;
+  summary?: string;
+  summary3lines?: string;
+  easySummary?: string;
 }
 
 // RSS 피드 응답 인터페이스

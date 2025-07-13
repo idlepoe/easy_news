@@ -4,6 +4,17 @@ import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import { NewsItem, RSSItem } from "../models/news";
 import { extractSBSNewsContent } from "../utils/htmlUtils";
+import { VertexAI } from "@google-cloud/vertexai";
+import 'dotenv/config'
+
+// Vertex AI 설정
+const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || "easy-news-9545c";
+const LOCATION = "us-central1";
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+// Vertex AI 초기화
+const vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
+const generativeModel = vertexAI.getGenerativeModel({ model: GEMINI_MODEL });
 
 // SBS 뉴스 RSS 피드 URL
 const RSS_URL = "https://news.sbs.co.kr/news/newsflashRssFeed.do?plink=RSSREADER";
@@ -15,14 +26,12 @@ function extractCategory(category: any): string | undefined {
   if (!category) return undefined;
   if (typeof category === 'string') return category.trim();
   if (Array.isArray(category)) {
-    // 배열이면 첫 번째 문자열만
     for (const c of category) {
       const str = extractCategory(c);
       if (str) return str;
     }
     return undefined;
   }
-  // 객체({ _: '사회', ... }) 구조
   if (typeof category === 'object' && '_' in category) {
     return typeof category._ === 'string' ? category._.trim() : undefined;
   }
@@ -37,6 +46,119 @@ function toTimestamp(pubDate: string | undefined): admin.firestore.Timestamp {
   const date = new Date(pubDate);
   if (isNaN(date.getTime())) return admin.firestore.Timestamp.now();
   return admin.firestore.Timestamp.fromDate(date);
+}
+
+/**
+ * Gemini로 10개 뉴스 요약 요청 (일반, 3줄, 쉬운 단어) - 한 번에 처리
+ */
+async function summarizeNewsBatch(newsList: NewsItem[]): Promise<{
+  summary: string[];
+  summary3lines: string[];
+  easySummary: string[];
+}> {
+
+  // 뉴스 제목과 본문 준비
+  const newsData = newsList.map((item, index) => ({
+    id: index + 1,
+    title: item.title,
+    content: item.description || item.title
+  }));
+
+  // JSON 형태로 한 번에 요청하는 프롬프트
+  const batchPrompt = `
+다음 ${newsData.length}개의 뉴스 기사를 분석하여 각각 3가지 요약을 제공해주세요.
+
+뉴스 목록:
+${newsData.map(news => `
+${news.id}. ${news.title}
+내용: ${news.content}
+`).join('\n')}
+
+각 뉴스에 대해 다음 3가지 요약을 JSON 형태로 응답해주세요:
+1. summary: 1문단 요약
+2. summary3lines: 3줄 요약 (각 줄은 짧고 간결하게)
+3. easySummary: 초등학생도 이해할 수 있는 쉬운 단어로 1문단 요약
+
+응답 형식:
+{
+  "summaries": [
+    {
+      "id": 1,
+      "summary": "1문단 요약 내용",
+      "summary3lines": "첫 번째 줄\n두 번째 줄\n세 번째 줄",
+      "easySummary": "쉬운 단어로 된 요약 내용"
+    },
+    ...
+  ]
+}
+
+JSON만 응답하고 다른 설명은 포함하지 마세요.
+`;
+
+  logger.info(`Gemini 배치 요약 요청 시작 (${newsData.length}개 뉴스)`);
+  
+  try {
+    const result = await generativeModel.generateContent({ 
+      contents: [{ role: "user", parts: [{ text: batchPrompt }] }] 
+    });
+    
+    const responseText = result.response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    logger.info(`[Gemini] 배치 응답 받음: ${responseText.substring(0, 200)}...`);
+    
+    // JSON 파싱
+    let parsedResponse;
+    try {
+      // JSON 블록만 추출 (```json ... ``` 형태일 수 있음)
+      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       responseText.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? jsonMatch[1] || jsonMatch[0] : responseText;
+      parsedResponse = JSON.parse(jsonText);
+    } catch (parseError) {
+      logger.error("JSON 파싱 오류:", parseError, "응답:", responseText);
+      throw new Error("AI 응답을 JSON으로 파싱할 수 없습니다.");
+    }
+    
+    // 결과 배열 생성
+    const summary: string[] = [];
+    const summary3lines: string[] = [];
+    const easySummary: string[] = [];
+    
+    if (parsedResponse.summaries && Array.isArray(parsedResponse.summaries)) {
+      for (let i = 0; i < newsData.length; i++) {
+        const summaryItem = parsedResponse.summaries.find((item: any) => item.id === i + 1);
+        if (summaryItem) {
+          summary.push(summaryItem.summary || '');
+          summary3lines.push(summaryItem.summary3lines || '');
+          easySummary.push(summaryItem.easySummary || '');
+          logger.info(`[Gemini] 뉴스 ${i + 1} 요약 완료`);
+        } else {
+          summary.push('');
+          summary3lines.push('');
+          easySummary.push('');
+          logger.warn(`[Gemini] 뉴스 ${i + 1} 요약 데이터 없음`);
+        }
+      }
+    } else {
+      logger.error("예상된 JSON 구조가 아닙니다:", parsedResponse);
+      // 빈 배열로 반환
+      for (let i = 0; i < newsData.length; i++) {
+        summary.push('');
+        summary3lines.push('');
+        easySummary.push('');
+      }
+    }
+    
+    return { summary, summary3lines, easySummary };
+  } catch (err) {
+    logger.error("Gemini 배치 요약 오류:", err);
+    // 오류 시 빈 배열 반환
+    const emptyArray = new Array(newsData.length).fill('');
+    return { 
+      summary: [...emptyArray], 
+      summary3lines: [...emptyArray], 
+      easySummary: [...emptyArray] 
+    };
+  }
 }
 
 /**
@@ -96,7 +218,6 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
         try {
           const fullContent = await extractSBSNewsContent(item.link.trim());
           if (fullContent) {
-            // 본문이 있으면 description에 추가 (최대 500자)
             const enhancedDescription = fullContent.length > 500 
               ? fullContent.substring(0, 500) + '...' 
               : fullContent;
@@ -104,7 +225,6 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
           }
         } catch (error) {
           logger.warn(`뉴스 본문 가져오기 실패 (${item.link}):`, error);
-          // 본문 가져오기 실패해도 기본 description 유지
         }
 
         newsItems.push(newsItem);
@@ -112,7 +232,21 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
     }
 
     logger.info(`${newsItems.length}개의 뉴스 아이템을 성공적으로 가져왔습니다.`);
-    return newsItems;
+
+    // 상위 10개만 Gemini 요약
+    const top10 = newsItems.slice(0, 10);
+    const { summary, summary3lines, easySummary } = await summarizeNewsBatch(top10);
+    logger.info("Gemini 요약 결과", { summary, summary3lines, easySummary });
+
+    // 요약 결과를 각 뉴스에 추가
+    for (let i = 0; i < top10.length; i++) {
+      top10[i].summary = summary[i] || '';
+      top10[i].summary3lines = summary3lines[i] || '';
+      top10[i].easySummary = easySummary[i] || '';
+    }
+
+    // 나머지 뉴스는 요약 없이 반환
+    return [...top10, ...newsItems.slice(10)];
   } catch (error) {
     logger.error("RSS 피드에서 데이터를 가져오는 중 오류 발생:", error);
     throw error;

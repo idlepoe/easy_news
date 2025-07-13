@@ -42,8 +42,13 @@ export async function extractSBSNewsContent(url: string): Promise<string> {
     const contentElement = $(contentSelector);
     
     if (contentElement.length > 0) {
-      // HTML 태그 제거하고 텍스트만 추출
-      let text = contentElement.text()
+      // br 태그를 \n으로 변환한 후 텍스트 추출
+      let html = contentElement.html() || '';
+      html = html.replace(/<br\s*\/?>/gi, '\n'); // <br>, <br/>, <br /> 모두 처리
+      
+      // 변환된 HTML에서 텍스트 추출
+      const $temp = cheerio.load(html);
+      let text = $temp('body').text()
         .replace(/\s+/g, ' ')  // 연속된 공백을 하나로
         .replace(/\n+/g, '\n') // 연속된 줄바꿈을 하나로
         .trim();
