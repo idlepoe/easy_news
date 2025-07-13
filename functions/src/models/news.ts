@@ -1,0 +1,38 @@
+import * as admin from "firebase-admin";
+// 뉴스 아이템 인터페이스
+export interface NewsItem {
+  title: string;
+  link: string;
+  description: string;
+  pubDate: string | admin.firestore.Timestamp;
+  guid: string;
+  category?: string;
+  mediaUrl?: string;
+}
+
+// RSS 피드 응답 인터페이스
+export interface RSSResponse {
+  rss: {
+    channel: {
+      item: RSSItem | RSSItem[];
+    };
+  };
+}
+
+// RSS 아이템 인터페이스
+export interface RSSItem {
+  title: string;
+  link: string;
+  description?: string;
+  pubDate?: string;
+  guid?: string;
+  category?: any;
+  [key: string]: any;
+}
+
+// 뉴스 저장 결과 인터페이스
+export interface NewsSaveResult {
+  savedCount: number;
+  updatedCount: number;
+  totalCount: number;
+} 
