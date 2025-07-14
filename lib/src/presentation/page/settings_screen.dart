@@ -145,6 +145,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
     final newsBodyDisplay = ref.watch(newsBodyDisplayProvider);
+    final popularNewsNotify = ref.watch(popularNewsNotifyProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -164,6 +165,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // 인기뉴스 3줄요약 알림 토글 (카드형)
+          _buildSectionHeader('알림'),
+          Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              title: const Text('인기뉴스 3줄요약 알림 받기'),
+              subtitle: const Text(
+                'ON으로 설정 시 인기뉴스 3줄요약을 알림으로 받아볼 수 있습니다. (알림은 06시~21시 제공)',
+              ),
+              trailing: Switch(
+                value: popularNewsNotify,
+                onChanged: (v) =>
+                    ref.read(popularNewsNotifyProvider.notifier).setNotify(v),
+                activeColor: AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           // 뉴스 본문 표시 방식 섹션
           _buildSectionHeader('뉴스 본문 표시 방식'),
           Card(

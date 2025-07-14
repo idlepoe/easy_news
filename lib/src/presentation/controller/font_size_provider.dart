@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/services/fcm_service.dart';
 
 const _fontSizeKey = 'font_size';
 const defaultFontSize = 16.0;
@@ -31,7 +32,9 @@ final fontSizeProvider = StateNotifierProvider<FontSizeNotifier, double>(
 
 // 뉴스 본문 표시 방식
 enum NewsBodyDisplayType { description, summary, summary3lines, easySummary }
+
 const _newsBodyDisplayKey = 'news_body_display_type';
+const _popularNewsNotifyKey = 'popular_news_notify';
 
 class NewsBodyDisplayNotifier extends StateNotifier<NewsBodyDisplayType> {
   NewsBodyDisplayNotifier() : super(NewsBodyDisplayType.description) {
@@ -56,6 +59,43 @@ class NewsBodyDisplayNotifier extends StateNotifier<NewsBodyDisplayType> {
   }
 }
 
-final newsBodyDisplayProvider = StateNotifierProvider<NewsBodyDisplayNotifier, NewsBodyDisplayType>(
-  (ref) => NewsBodyDisplayNotifier(),
-);
+final newsBodyDisplayProvider =
+    StateNotifierProvider<NewsBodyDisplayNotifier, NewsBodyDisplayType>(
+      (ref) => NewsBodyDisplayNotifier(),
+    );
+
+class PopularNewsNotifyNotifier extends StateNotifier<bool> {
+  final FCMService _fcmService = FCMService();
+
+  PopularNewsNotifyNotifier() : super(false) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool(_popularNewsNotifyKey) ?? false;
+
+    // 기존에 알림이 켜져 있었다면 토픽 구독 처리
+    if (state) {
+      await _fcmService.subscribeToSummary3Lines();
+    }
+  }
+
+  Future<void> setNotify(bool value) async {
+    state = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_popularNewsNotifyKey, value);
+
+    // FCM 토픽 구독/해제 처리
+    if (value) {
+      await _fcmService.subscribeToSummary3Lines();
+    } else {
+      await _fcmService.unsubscribeFromSummary3Lines();
+    }
+  }
+}
+
+final popularNewsNotifyProvider =
+    StateNotifierProvider<PopularNewsNotifyNotifier, bool>(
+      (ref) => PopularNewsNotifyNotifier(),
+    );
