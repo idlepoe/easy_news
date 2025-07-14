@@ -5,6 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import '../controller/news_controller.dart';
 import '../../domain/entity/news.dart';
 import '../../domain/entity/news_entity.dart';
@@ -28,9 +29,18 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
   bool _hasUpdatedViewCount = false;
   bool _isRefreshingDetail = false;
 
+  // TTS 관련 변수
+  FlutterTts? _flutterTts;
+  bool _isSpeaking = false;
+
+  // 스크롤 관련 변수
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _summaryKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
+    _initTts();
     // 상세화면 진입 시 상세정보를 다시 호출
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshNewsDetail();
@@ -39,6 +49,10 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
 
   @override
   void dispose() {
+    // TTS 정리
+    _flutterTts?.stop();
+    _scrollController.dispose();
+
     // 화면을 나갈 때 조회수 업데이트
     if (!_hasUpdatedViewCount) {
       _hasUpdatedViewCount = true;
@@ -50,6 +64,29 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
       });
     }
     super.dispose();
+  }
+
+  // TTS 초기화
+  Future<void> _initTts() async {
+    _flutterTts = FlutterTts();
+
+    await _flutterTts!.setLanguage("ko-KR");
+    await _flutterTts!.setSpeechRate(0.5);
+    await _flutterTts!.setVolume(1.0);
+    await _flutterTts!.setPitch(1.0);
+
+    _flutterTts!.setCompletionHandler(() {
+      setState(() {
+        _isSpeaking = false;
+      });
+    });
+
+    _flutterTts!.setErrorHandler((msg) {
+      setState(() {
+        _isSpeaking = false;
+      });
+      print('TTS 에러: $msg');
+    });
   }
 
   // 상세정보를 다시 호출하는 메서드
@@ -156,6 +193,46 @@ ${news.description}
     Share.share(shareText, subject: news.title);
   }
 
+  // TTS 재생/정지 메서드
+  Future<void> _toggleTts() async {
+    if (_flutterTts == null) return;
+
+    if (_isSpeaking) {
+      await _flutterTts!.stop();
+      setState(() {
+        _isSpeaking = false;
+      });
+    } else {
+      final newsAsync = ref.watch(newsDetailProvider(widget.newsId));
+      final news = newsAsync.value;
+      if (news == null) return;
+
+      // HTML 태그 제거하고 읽기
+      final cleanText = news.description
+          .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), ' ')
+          .replaceAll(RegExp(r'<[^>]*>'), '')
+          .replaceAll(RegExp(r'&[^;]+;'), '');
+
+      setState(() {
+        _isSpeaking = true;
+      });
+
+      await _flutterTts!.speak('${news.title}. $cleanText');
+    }
+  }
+
+  // 요약 섹션으로 스크롤
+  void _scrollToSummary() {
+    final context = _summaryKey.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final newsAsync = ref.watch(newsDetailProvider(widget.newsId));
@@ -192,6 +269,7 @@ ${news.description}
               return Stack(
                 children: [
                   SingleChildScrollView(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,6 +325,52 @@ ${news.description}
                         ),
                         const SizedBox(height: 16),
 
+                        // 뉴스듣기, AI 요약보기 버튼
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _toggleTts,
+                                icon: Icon(
+                                  _isSpeaking ? Icons.stop : Icons.volume_up,
+                                ),
+                                label: Text(_isSpeaking ? '정지' : '뉴스 듣기'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isSpeaking
+                                      ? AppColors.error
+                                      : AppColors.primary,
+                                  foregroundColor: AppColors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _scrollToSummary,
+                                icon: const Icon(Icons.summarize),
+                                label: const Text('AI 요약보기'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  side: BorderSide(color: AppColors.primary),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
                         // 본문 - entities 하이라이트 적용
                         _buildHighlightedText(
                           news.description,
@@ -255,36 +379,44 @@ ${news.description}
                         ),
                         const SizedBox(height: 24),
 
-                        // 3가지 요약 표시
-                        if (news.summary != null &&
-                            news.summary!.isNotEmpty) ...[
-                          _buildSummarySection(
-                            '📝 일반 요약',
-                            news.summary!,
-                            fontSize,
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                        // 3가지 요약 표시 (키 추가)
+                        Container(
+                          key: _summaryKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (news.summary != null &&
+                                  news.summary!.isNotEmpty) ...[
+                                _buildSummarySection(
+                                  '📝 일반 요약',
+                                  news.summary!,
+                                  fontSize,
+                                ),
+                                const SizedBox(height: 16),
+                              ],
 
-                        if (news.easySummary != null &&
-                            news.easySummary!.isNotEmpty) ...[
-                          _buildSummarySection(
-                            '🎯 쉬운 요약',
-                            news.easySummary!,
-                            fontSize,
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                              if (news.easySummary != null &&
+                                  news.easySummary!.isNotEmpty) ...[
+                                _buildSummarySection(
+                                  '🎯 쉬운 요약',
+                                  news.easySummary!,
+                                  fontSize,
+                                ),
+                                const SizedBox(height: 16),
+                              ],
 
-                        if (news.summary3lines != null &&
-                            news.summary3lines!.isNotEmpty) ...[
-                          _buildSummary3LinesSection(
-                            '📋 3줄 요약',
-                            news.summary3lines!,
-                            fontSize,
+                              if (news.summary3lines != null &&
+                                  news.summary3lines!.isNotEmpty) ...[
+                                _buildSummary3LinesSection(
+                                  '📋 3줄 요약',
+                                  news.summary3lines!,
+                                  fontSize,
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                        ],
+                        ),
 
                         if (news.link.isNotEmpty)
                           Row(
@@ -294,24 +426,10 @@ ${news.description}
                                   onPressed: () async {
                                     final url = Uri.parse(news.link);
                                     try {
-                                      if (await canLaunchUrl(url)) {
-                                        await launchUrl(
-                                          url,
-                                          mode: LaunchMode.externalApplication,
-                                        );
-                                      } else {
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                '링크를 열 수 없습니다: ${news.link}',
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      }
+                                      await launchUrl(
+                                        url,
+                                        mode: LaunchMode.externalApplication,
+                                      );
                                     } catch (e) {
                                       if (mounted) {
                                         ScaffoldMessenger.of(
@@ -568,7 +686,7 @@ ${news.description}
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 헤더 (전체 탭 시 닫힘)
+          // 헤더 (타이틀 배경색을 엔티티 타입 색상으로)
           GestureDetector(
             onTap: () {
               setState(() {
@@ -578,7 +696,7 @@ ${news.description}
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: _getEntityColor(entity.type),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(20),
                 ),
@@ -591,10 +709,10 @@ ${news.description}
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _getEntityColor(entity.type).withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: _getEntityColor(entity.type).withOpacity(0.3),
+                        color: Colors.white.withOpacity(0.3),
                         width: 1,
                       ),
                     ),
@@ -614,11 +732,11 @@ ${news.description}
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                  Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+                  Icon(Icons.close, color: Colors.white, size: 20),
                 ],
               ),
             ),
