@@ -52,9 +52,9 @@ class NewsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 1),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
       ),
       child: InkWell(
         onTap: onTap,
@@ -77,19 +77,19 @@ class NewsCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
                           width: double.infinity,
-                          color: AppColors.surface,
+                          color: Theme.of(context).cardColor,
                           child: Icon(
                             Icons.image_outlined,
-                            color: AppColors.textTertiary,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
                             size: 48,
                           ),
                         ),
                         errorWidget: (context, url, error) => Container(
                           width: double.infinity,
-                          color: AppColors.surface,
+                          color: Theme.of(context).cardColor,
                           child: Icon(
                             Icons.image_outlined,
-                            color: AppColors.textTertiary,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
                             size: 48,
                           ),
                         ),
@@ -142,7 +142,7 @@ class NewsCard extends StatelessWidget {
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       height: 1.3,
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).textTheme.titleLarge?.color,
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -165,7 +165,7 @@ class NewsCard extends StatelessWidget {
                           Icon(
                             Icons.visibility_outlined,
                             size: 14,
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
                           ),
                           const SizedBox(width: 4),
                           Builder(
@@ -180,7 +180,9 @@ class NewsCard extends StatelessWidget {
                               return Text(
                                 formattedViewCount,
                                 style: TextStyle(
-                                  color: AppColors.textSecondary,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodySmall?.color,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -194,7 +196,7 @@ class NewsCard extends StatelessWidget {
                         _formatDate(news.pubDate),
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
                           fontWeight: FontWeight.w400,
                         ),
                       ),

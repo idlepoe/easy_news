@@ -239,28 +239,23 @@ ${news.description}
     final fontSize = ref.watch(fontSizeProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           '뉴스 상세',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: Theme.of(context).textTheme.titleLarge?.color,
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: AppColors.white,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
-        actions: [
-          FontSizeMenu(
-            currentSize: fontSize,
-            fontSizes: fontSizeOptions,
-            onSelected: (size) =>
-                ref.read(fontSizeProvider.notifier).setFontSize(size),
-          ),
-        ],
+        iconTheme: IconThemeData(
+          color: Theme.of(context).textTheme.titleLarge?.color,
+        ),
+        actions: [],
       ),
       body: Stack(
         children: [
@@ -547,7 +542,7 @@ ${news.description}
       ),
       bottomNavigationBar: SafeArea(
         child: Container(
-          color: AppColors.white,
+          color: Theme.of(context).appBarTheme.backgroundColor,
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           child: SizedBox(
             width: double.infinity,
@@ -673,7 +668,7 @@ ${news.description}
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -764,9 +759,9 @@ ${news.description}
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 1),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,7 +797,7 @@ ${news.description}
             content,
             style: TextStyle(
               fontSize: fontSize - 2,
-              color: AppColors.textSecondary,
+              color: Theme.of(context).textTheme.bodyMedium?.color,
               height: 1.5,
             ),
           ),
@@ -822,9 +817,9 @@ ${news.description}
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 1),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

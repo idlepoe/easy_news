@@ -12,6 +12,8 @@ import '../widgets/rounded_circular_progress.dart';
 import '../widgets/font_size_menu.dart';
 import '../widgets/refresh_status_card.dart';
 import '../controller/font_size_provider.dart';
+import '../page/settings_screen.dart'; // Added import for SettingsScreen
+import '../controller/theme_mode_provider.dart'; // Added import for ThemeModeProvider
 
 class NewsListPage extends ConsumerWidget {
   const NewsListPage({super.key});
@@ -281,29 +283,67 @@ class NewsListPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fontSize = ref.watch(fontSizeProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode == ThemeMode.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Easy News',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: Theme.of(context).textTheme.titleLarge?.color,
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: AppColors.white,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
         scrolledUnderElevation: 0,
-        actions: [
-          FontSizeMenu(
-            currentSize: fontSize,
-            fontSizes: fontSizeOptions,
-            onSelected: (size) =>
-                ref.read(fontSizeProvider.notifier).setFontSize(size),
+        iconTheme: IconThemeData(
+          color: Theme.of(context).textTheme.titleLarge?.color,
+        ),
+        actions: [],
+      ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).drawerTheme.backgroundColor,
+                ),
+                child: Center(
+                  child: Text(
+                    'Easy News',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings, color: AppColors.primary),
+                title: Text(
+                  '설정',
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  );
+                },
+              ),
+            ],
           ),
-        ],
+        ),
       ),
       body: _buildNewsTab(
         ref.watch(allNewsListProvider),

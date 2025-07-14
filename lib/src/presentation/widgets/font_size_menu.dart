@@ -16,13 +16,16 @@ class FontSizeMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<double>(
-      icon: Icon(Icons.font_download_outlined, color: AppColors.textPrimary),
+      icon: Icon(
+        Icons.font_download_outlined,
+        color: Theme.of(context).textTheme.titleLarge?.color,
+      ),
       initialValue: currentSize,
       onSelected: onSelected,
-      color: AppColors.white,
+      color: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.divider),
+        side: BorderSide(color: Theme.of(context).dividerColor),
       ),
       itemBuilder: (context) => fontSizes
           .map(
@@ -37,7 +40,7 @@ class FontSizeMenu extends StatelessWidget {
                       '${size.toInt()} pt',
                       style: TextStyle(
                         fontSize: size,
-                        color: AppColors.textPrimary,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
