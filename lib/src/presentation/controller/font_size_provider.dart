@@ -28,3 +28,34 @@ class FontSizeNotifier extends StateNotifier<double> {
 final fontSizeProvider = StateNotifierProvider<FontSizeNotifier, double>(
   (ref) => FontSizeNotifier(),
 );
+
+// 뉴스 본문 표시 방식
+enum NewsBodyDisplayType { description, summary, summary3lines, easySummary }
+const _newsBodyDisplayKey = 'news_body_display_type';
+
+class NewsBodyDisplayNotifier extends StateNotifier<NewsBodyDisplayType> {
+  NewsBodyDisplayNotifier() : super(NewsBodyDisplayType.description) {
+    _loadType();
+  }
+
+  Future<void> _loadType() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_newsBodyDisplayKey);
+    if (value != null) {
+      state = NewsBodyDisplayType.values.firstWhere(
+        (e) => e.name == value,
+        orElse: () => NewsBodyDisplayType.description,
+      );
+    }
+  }
+
+  Future<void> setType(NewsBodyDisplayType type) async {
+    state = type;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_newsBodyDisplayKey, type.name);
+  }
+}
+
+final newsBodyDisplayProvider = StateNotifierProvider<NewsBodyDisplayNotifier, NewsBodyDisplayType>(
+  (ref) => NewsBodyDisplayNotifier(),
+);

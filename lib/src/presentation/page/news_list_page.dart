@@ -139,6 +139,7 @@ class NewsListPage extends ConsumerWidget {
     AsyncValue<List<News>> newsListAsync,
     NewsListNotifier newsListNotifier,
     double fontSize,
+    NewsBodyDisplayType bodyType,
   ) {
     return RefreshIndicator(
       onRefresh: () => newsListNotifier.refreshWithStatus(),
@@ -149,12 +150,7 @@ class NewsListPage extends ConsumerWidget {
           children: [
             // 갱신 상태 카드 표시
             if (newsListNotifier.isRefreshing)
-              RefreshStatusCard(
-                message: '데이터를 갱신하고 있습니다...',
-                onDismiss: () {
-                  // 갱신 상태를 숨기는 로직 (필요시 구현)
-                },
-              ),
+              RefreshStatusCard(message: '데이터를 갱신하고 있습니다...', onDismiss: () {}),
             // 뉴스 목록
             Expanded(
               child: newsList.isEmpty
@@ -203,10 +199,56 @@ class NewsListPage extends ConsumerWidget {
                             );
                           }
                           final news = newsList[index];
+                          Widget? subtitle;
+                          switch (bodyType) {
+                            case NewsBodyDisplayType.description:
+                              subtitle = Text(
+                                news.description,
+                                maxLines: 5,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: fontSize),
+                              );
+                              break;
+                            case NewsBodyDisplayType.summary:
+                              final summary = (news.summary ?? '').trim();
+                              if (summary.isEmpty) {
+                                subtitle = Text(
+                                  news.description,
+                                  maxLines: 5,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: fontSize),
+                                );
+                              } else {
+                                subtitle = Text(
+                                  summary,
+                                  maxLines: 5,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: fontSize),
+                                );
+                              }
+                              break;
+                            case NewsBodyDisplayType.summary3lines:
+                              subtitle = Text(
+                                (news.summary3lines ?? '').trim(),
+                                maxLines: 5,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: fontSize),
+                              );
+                              break;
+                            case NewsBodyDisplayType.easySummary:
+                              subtitle = Text(
+                                (news.easySummary ?? '').trim(),
+                                maxLines: 5,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: fontSize),
+                              );
+                              break;
+                          }
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: NewsCard(
                               news: news,
+                              subtitle: subtitle,
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -216,27 +258,6 @@ class NewsListPage extends ConsumerWidget {
                                   ),
                                 );
                               },
-                              subtitle:
-                                  ((news.easySummary != null &&
-                                          news.easySummary!.isNotEmpty) ||
-                                      (news.summary3lines != null &&
-                                          news.summary3lines!.isNotEmpty) ||
-                                      (news.summary != null &&
-                                          news.summary!.isNotEmpty))
-                                  ? Text(
-                                      news.easySummary?.isNotEmpty == true
-                                          ? news.easySummary!
-                                          : (news.summary3lines?.isNotEmpty ==
-                                                    true
-                                                ? news.summary3lines!
-                                                : (news.summary ?? '')),
-                                      style: TextStyle(
-                                        fontSize: fontSize,
-                                        color: AppColors.textSecondary,
-                                        height: 1.4,
-                                      ),
-                                    )
-                                  : null,
                             ),
                           );
                         },
@@ -285,6 +306,7 @@ class NewsListPage extends ConsumerWidget {
     final fontSize = ref.watch(fontSizeProvider);
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
+    final bodyType = ref.watch(newsBodyDisplayProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -303,52 +325,23 @@ class NewsListPage extends ConsumerWidget {
         iconTheme: IconThemeData(
           color: Theme.of(context).textTheme.titleLarge?.color,
         ),
-        actions: [],
-      ),
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).drawerTheme.backgroundColor,
-                ),
-                child: Center(
-                  child: Text(
-                    'Easy News',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings, color: AppColors.primary),
-                title: Text(
-                  '설정',
-                  style: TextStyle(
-                    color: Theme.of(context).textTheme.bodyLarge?.color,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  );
-                },
-              ),
-            ],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
           ),
-        ),
+        ],
       ),
       body: _buildNewsTab(
         ref.watch(allNewsListProvider),
         ref.read(allNewsListProvider.notifier),
         fontSize,
+        bodyType,
       ),
     );
   }

@@ -12,6 +12,7 @@ class App extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Easy News',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

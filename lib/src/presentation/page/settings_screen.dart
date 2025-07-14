@@ -144,6 +144,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final fontSize = ref.watch(fontSizeProvider);
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
+    final newsBodyDisplay = ref.watch(newsBodyDisplayProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -163,6 +164,55 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // 뉴스 본문 표시 방식 섹션
+          _buildSectionHeader('뉴스 본문 표시 방식'),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                children: [
+                  RadioListTile<NewsBodyDisplayType>(
+                    value: NewsBodyDisplayType.description,
+                    groupValue: newsBodyDisplay,
+                    onChanged: (v) {
+                      if (v != null)
+                        ref.read(newsBodyDisplayProvider.notifier).setType(v);
+                    },
+                    title: const Text('원본'),
+                  ),
+                  RadioListTile<NewsBodyDisplayType>(
+                    value: NewsBodyDisplayType.summary,
+                    groupValue: newsBodyDisplay,
+                    onChanged: (v) {
+                      if (v != null)
+                        ref.read(newsBodyDisplayProvider.notifier).setType(v);
+                    },
+                    title: const Text('일반요약'),
+                  ),
+                  RadioListTile<NewsBodyDisplayType>(
+                    value: NewsBodyDisplayType.summary3lines,
+                    groupValue: newsBodyDisplay,
+                    onChanged: (v) {
+                      if (v != null)
+                        ref.read(newsBodyDisplayProvider.notifier).setType(v);
+                    },
+                    title: const Text('3줄요약'),
+                  ),
+                  RadioListTile<NewsBodyDisplayType>(
+                    value: NewsBodyDisplayType.easySummary,
+                    groupValue: newsBodyDisplay,
+                    onChanged: (v) {
+                      if (v != null)
+                        ref.read(newsBodyDisplayProvider.notifier).setType(v);
+                    },
+                    title: const Text('쉬운요약'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
           // 테마 설정 섹션
           _buildSectionHeader('테마 설정'),
           Card(
