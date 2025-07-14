@@ -1,7 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../../domain/entity/news.dart';
 import '../../domain/usecase/get_news_list_usecase.dart';
 import 'news_controller.dart';
+
+const _newsListCacheKey = 'news_list_cache';
 
 class NewsListNotifier extends StateNotifier<AsyncValue<List<News>>> {
   final Ref ref;
@@ -12,7 +16,28 @@ class NewsListNotifier extends StateNotifier<AsyncValue<List<News>>> {
   bool _isRefreshing = false;
 
   NewsListNotifier(this.ref) : super(const AsyncValue.loading()) {
+    _loadCachedNews();
     loadInitialNews();
+  }
+
+  Future<void> _loadCachedNews() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = prefs.getString(_newsListCacheKey);
+    if (jsonStr != null) {
+      try {
+        final List<dynamic> jsonList = json.decode(jsonStr);
+        final cachedNews = jsonList.map((e) => News.fromJson(e)).toList();
+        _allNews.clear();
+        _allNews.addAll(cachedNews);
+        state = AsyncValue.data(_allNews);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _saveNewsCache(List<News> newsList) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = json.encode(newsList.map((e) => e.toJson()).toList());
+    await prefs.setString(_newsListCacheKey, jsonStr);
   }
 
   Future<void> loadInitialNews({String? category}) async {
@@ -24,8 +49,9 @@ class NewsListNotifier extends StateNotifier<AsyncValue<List<News>>> {
       _allNews.addAll(news);
       _currentPage = 1;
       _currentCategory = category;
-      _hasMore = news.length == 10; // 10개면 더 있을 가능성
+      _hasMore = news.length == 10;
       state = AsyncValue.data(_allNews);
+      await _saveNewsCache(_allNews);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -35,7 +61,7 @@ class NewsListNotifier extends StateNotifier<AsyncValue<List<News>>> {
     if (_isRefreshing) return;
 
     _isRefreshing = true;
-    state = AsyncValue.data(_allNews); // 현재 상태 유지하면서 갱신 상태 표시
+    state = AsyncValue.data(_allNews);
 
     try {
       final useCase = ref.read(getNewsListUseCaseProvider);
@@ -50,6 +76,7 @@ class NewsListNotifier extends StateNotifier<AsyncValue<List<News>>> {
       _hasMore = news.length == 10;
       _isRefreshing = false;
       state = AsyncValue.data(_allNews);
+      await _saveNewsCache(_allNews);
     } catch (error, stackTrace) {
       _isRefreshing = false;
       state = AsyncValue.error(error, stackTrace);
@@ -73,6 +100,7 @@ class NewsListNotifier extends StateNotifier<AsyncValue<List<News>>> {
         _currentPage = nextPage;
         _hasMore = news.length == 10;
         state = AsyncValue.data(_allNews);
+        await _saveNewsCache(_allNews);
       } else {
         _hasMore = false;
       }

@@ -14,11 +14,13 @@ import 'package:intl/intl.dart';
 import '../widgets/font_size_menu.dart';
 import '../widgets/rounded_circular_progress.dart';
 import '../controller/font_size_provider.dart';
+import '../widgets/refresh_status_card.dart';
 
 class NewsDetailPage extends ConsumerStatefulWidget {
   final String newsId;
+  final News? initialNews;
 
-  const NewsDetailPage({super.key, required this.newsId});
+  const NewsDetailPage({super.key, required this.newsId, this.initialNews});
 
   @override
   ConsumerState<NewsDetailPage> createState() => _NewsDetailPageState();
@@ -28,6 +30,7 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
   NewsEntity? selectedEntity;
   bool _hasUpdatedViewCount = false;
   bool _isRefreshingDetail = false;
+  bool _isLoadingDetail = false;
 
   // TTS 관련 변수
   FlutterTts? _flutterTts;
@@ -37,11 +40,15 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _summaryKey = GlobalKey();
 
+  News? _displayNews; // 즉시 표시용 뉴스
+
   @override
   void initState() {
     super.initState();
     _initTts();
-    // 상세화면 진입 시 상세정보를 다시 호출
+    // 진입 시 목록에서 받은 데이터를 우선 표시
+    _displayNews = widget.initialNews;
+    // 상세정보 fetch
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshNewsDetail();
     });
@@ -91,31 +98,17 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
 
   // 상세정보를 다시 호출하는 메서드
   Future<void> _refreshNewsDetail() async {
-    print('🔄 상세정보 갱신 시작: ${widget.newsId}');
     setState(() {
       _isRefreshingDetail = true;
+      _isLoadingDetail = true;
     });
-
     try {
-      // 상세정보를 다시 호출
-      print('📡 API 호출 시작');
       await ref.refresh(newsDetailProvider(widget.newsId));
-      print('✅ API 호출 완료');
-
-      // 목록의 조회수를 낙관적 업데이트
-      ref
-          .read(allNewsListProvider.notifier)
-          .updateViewCountOptimistically(widget.newsId);
-      print('📊 조회수 낙관적 업데이트 완료');
-    } catch (e) {
-      // 에러는 무시 (사용자 경험에 영향 없음)
-      print('❌ 상세정보 갱신 실패: $e');
-    } finally {
-      setState(() {
-        _isRefreshingDetail = false;
-      });
-      print('🏁 상세정보 갱신 완료');
-    }
+    } catch (e) {}
+    setState(() {
+      _isRefreshingDetail = false;
+      _isLoadingDetail = false;
+    });
   }
 
   String _formatKoreanDateTime(DateTime dateTime) {
@@ -237,6 +230,7 @@ ${news.description}
   Widget build(BuildContext context) {
     final newsAsync = ref.watch(newsDetailProvider(widget.newsId));
     final fontSize = ref.watch(fontSizeProvider);
+    final news = newsAsync.value ?? _displayNews;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -257,289 +251,223 @@ ${news.description}
         ),
         actions: [],
       ),
-      body: Stack(
-        children: [
-          newsAsync.when(
-            data: (news) {
-              return Stack(
-                children: [
-                  SingleChildScrollView(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (news.mediaUrl.isNotEmpty)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: CachedNetworkImage(
-                              imageUrl: news.mediaUrl,
-                              width: double.infinity,
-                              height: 200,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
+      body: news == null
+          ? const Center(child: RoundedCircularProgress())
+          : Stack(
+              children: [
+                ListView(
+                  controller: _scrollController,
+                  children: [
+                    if (_isRefreshingDetail || newsAsync.isLoading)
+                      RefreshStatusCard(message: '상세 데이터를 갱신하는 중...'),
+                    // 기존 상세 UI (news 객체 사용)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (news.mediaUrl.isNotEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: CachedNetworkImage(
+                                imageUrl: news.mediaUrl,
                                 width: double.infinity,
                                 height: 200,
-                                color: AppColors.surface,
-                                child: Icon(
-                                  Icons.image_outlined,
-                                  size: 64,
-                                  color: AppColors.textTertiary,
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                width: double.infinity,
-                                height: 200,
-                                color: AppColors.surface,
-                                child: Icon(
-                                  Icons.error_outline,
-                                  size: 64,
-                                  color: AppColors.textTertiary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 16),
-                        Text(
-                          news.title,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontSize: fontSize + 4,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-                        // 게시일 표시
-                        Text(
-                          _formatKoreanDateTime(news.pubDate),
-                          style: TextStyle(
-                            fontSize: fontSize - 2,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // 뉴스듣기, AI 요약보기 버튼
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: _toggleTts,
-                                icon: Icon(
-                                  _isSpeaking ? Icons.stop : Icons.volume_up,
-                                ),
-                                label: Text(_isSpeaking ? '정지' : '뉴스 듣기'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _isSpeaking
-                                      ? AppColors.error
-                                      : AppColors.primary,
-                                  foregroundColor: AppColors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Container(
+                                  width: double.infinity,
+                                  height: 200,
+                                  color: AppColors.surface,
+                                  child: Icon(
+                                    Icons.image_outlined,
+                                    size: 64,
+                                    color: AppColors.textTertiary,
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
+                                ),
+                                errorWidget: (context, url, error) => Container(
+                                  width: double.infinity,
+                                  height: 200,
+                                  color: AppColors.surface,
+                                  child: Icon(
+                                    Icons.error_outline,
+                                    size: 64,
+                                    color: AppColors.textTertiary,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _scrollToSummary,
-                                icon: const Icon(Icons.summarize),
-                                label: const Text('AI 요약보기'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.primary,
-                                  side: BorderSide(color: AppColors.primary),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
+                          const SizedBox(height: 16),
+                          Text(
+                            news.title,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: fontSize + 4,
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // 본문 - entities 하이라이트 적용
-                        _buildHighlightedText(
-                          news.description,
-                          news.entities ?? [],
-                          fontSize: fontSize,
-                        ),
-                        const SizedBox(height: 24),
-
-                        // 3가지 요약 표시 (키 추가)
-                        Container(
-                          key: _summaryKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (news.summary != null &&
-                                  news.summary!.isNotEmpty) ...[
-                                _buildSummarySection(
-                                  '📝 일반 요약',
-                                  news.summary!,
-                                  fontSize,
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-
-                              if (news.easySummary != null &&
-                                  news.easySummary!.isNotEmpty) ...[
-                                _buildSummarySection(
-                                  '🎯 쉬운 요약',
-                                  news.easySummary!,
-                                  fontSize,
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-
-                              if (news.summary3lines != null &&
-                                  news.summary3lines!.isNotEmpty) ...[
-                                _buildSummary3LinesSection(
-                                  '📋 3줄 요약',
-                                  news.summary3lines!,
-                                  fontSize,
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                            ],
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          // 게시일 표시
+                          Text(
+                            _formatKoreanDateTime(news.pubDate),
+                            style: TextStyle(
+                              fontSize: fontSize - 2,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
 
-                        if (news.link.isNotEmpty)
+                          // 뉴스듣기, AI 요약보기 버튼
                           Row(
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: () async {
-                                    final url = Uri.parse(news.link);
-                                    try {
-                                      await launchUrl(
-                                        url,
-                                        mode: LaunchMode.externalApplication,
-                                      );
-                                    } catch (e) {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              '링크 열기 중 오류가 발생했습니다: $e',
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
-                                  icon: const Icon(Icons.open_in_new),
-                                  label: const Text('원본 기사 보기'),
+                                  onPressed: _toggleTts,
+                                  icon: Icon(
+                                    _isSpeaking ? Icons.stop : Icons.volume_up,
+                                  ),
+                                  label: Text(_isSpeaking ? '정지' : '뉴스 듣기'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _isSpeaking
+                                        ? AppColors.error
+                                        : AppColors.primary,
+                                    foregroundColor: AppColors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              ElevatedButton.icon(
-                                onPressed: _shareOriginalArticle,
-                                icon: const Icon(Icons.share),
-                                label: const Text('공유'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.surface,
-                                  foregroundColor: AppColors.textPrimary,
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _scrollToSummary,
+                                  icon: const Icon(Icons.summarize),
+                                  label: const Text('AI 요약보기'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: BorderSide(color: AppColors.primary),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        const SizedBox(height: 32),
-                      ],
-                    ),
-                  ),
+                          const SizedBox(height: 16),
 
-                  // Entity 상세 모달
-                  if (selectedEntity != null)
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: _buildEntityModal(selectedEntity!),
-                    ),
-                ],
-              );
-            },
-            loading: () => const Center(child: RoundedCircularProgress()),
-            error: (e, _) => Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: AppColors.error),
-                  const SizedBox(height: 16),
-                  Text('에러가 발생했습니다: $e'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () =>
-                        ref.refresh(newsDetailProvider(widget.newsId)),
-                    child: const Text('다시 시도'),
-                  ),
-                ],
-              ),
-            ),
-          ),
+                          // 본문 - entities 하이라이트 적용
+                          _buildHighlightedText(
+                            news.description,
+                            news.entities ?? [],
+                            fontSize: fontSize,
+                          ),
+                          const SizedBox(height: 24),
 
-          // 상세정보 갱신 중 로딩 카드
-          if (_isRefreshingDetail)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.overlay.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                          // 3가지 요약 표시 (키 추가)
+                          Container(
+                            key: _summaryKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (news.summary != null &&
+                                    news.summary!.isNotEmpty) ...[
+                                  _buildSummarySection(
+                                    '📝 일반 요약',
+                                    news.summary!,
+                                    fontSize,
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                if (news.easySummary != null &&
+                                    news.easySummary!.isNotEmpty) ...[
+                                  _buildSummarySection(
+                                    '🎯 쉬운 요약',
+                                    news.easySummary!,
+                                    fontSize,
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                if (news.summary3lines != null &&
+                                    news.summary3lines!.isNotEmpty) ...[
+                                  _buildSummary3LinesSection(
+                                    '📋 3줄 요약',
+                                    news.summary3lines!,
+                                    fontSize,
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+                              ],
+                            ),
+                          ),
+
+                          if (news.link.isNotEmpty)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final url = Uri.parse(news.link);
+                                      try {
+                                        await launchUrl(
+                                          url,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      } catch (e) {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                '링크 열기 중 오류가 발생했습니다: $e',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    icon: const Icon(Icons.open_in_new),
+                                    label: const Text('원본 기사 보기'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                ElevatedButton.icon(
+                                  onPressed: _shareOriginalArticle,
+                                  icon: const Icon(Icons.share),
+                                  label: const Text('공유'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.surface,
+                                    foregroundColor: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '상세 정보를 갱신하고 있습니다...',
-                      style: TextStyle(
-                        color: AppColors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                // Entity 상세 모달
+                if (selectedEntity != null)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: _buildEntityModal(selectedEntity!),
+                  ),
+              ],
             ),
-        ],
-      ),
       bottomNavigationBar: SafeArea(
         child: Container(
           color: Theme.of(context).appBarTheme.backgroundColor,

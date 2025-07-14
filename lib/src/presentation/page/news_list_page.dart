@@ -253,8 +253,10 @@ class NewsListPage extends ConsumerWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        NewsDetailPage(newsId: news.id),
+                                    builder: (_) => NewsDetailPage(
+                                      newsId: news.id,
+                                      initialNews: news,
+                                    ),
                                   ),
                                 );
                               },
