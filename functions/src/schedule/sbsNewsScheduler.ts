@@ -8,7 +8,7 @@ import { saveNewsToFirestore } from "../services/firestoreService";
  * 1시간마다 SBS 뉴스 RSS 피드에서 뉴스 데이터를 가져와서 Firestore에 저장
  */
 export const sbsNewsScheduler = onSchedule({
-  schedule: "every 1 hours",
+  schedule: "every 6 hours",
   timeZone: "Asia/Seoul",
   retryCount: 3,
   timeoutSeconds: 1800 // 30분 (AI 요청을 위한 충분한 시간)

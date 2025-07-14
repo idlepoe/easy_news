@@ -58,3 +58,12 @@ final newsDetailProvider = FutureProvider.family<News, String>((ref, id) async {
   final useCase = ref.watch(getNewsDetailUseCaseProvider);
   return useCase(id);
 });
+
+// 조회수 업데이트 프로바이더
+final updateViewCountProvider = FutureProvider.family<void, String>((
+  ref,
+  id,
+) async {
+  final repository = ref.watch(newsRepositoryProvider);
+  return repository.updateViewCount(id);
+});

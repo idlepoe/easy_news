@@ -137,7 +137,13 @@ export async function getRecentNews(limit: number = 10): Promise<NewsItem[]> {
         description: data.description,
         pubDate: data.pubDate,
         guid: data.guid,
-        category: data.category
+        category: data.category,
+        mediaUrl: data.mediaUrl,
+        summary: data.summary,
+        summary3lines: data.summary3lines,
+        easySummary: data.easySummary,
+        entities: data.entities,
+        viewCount: data.viewCount || 0
       });
     });
 

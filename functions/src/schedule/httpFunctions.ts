@@ -111,7 +111,7 @@ export const getNewsStatus = onRequest({
 
 /**
  * 뉴스 목록을 페이지네이션으로 반환하는 HTTP 함수
- * 쿼리: page(1부터), pageSize(기본 10, 최대 100)
+ * 쿼리: page(1부터), pageSize(기본 10, 최대 100), category(선택적)
  */
 export const getNewsListAPI = onRequest({
   timeoutSeconds: 60
@@ -120,10 +120,23 @@ export const getNewsListAPI = onRequest({
     logger.info("뉴스 목록 페이지네이션 조회 요청");
     const page = Math.max(1, parseInt(request.query.page as string) || 1);
     const pageSize = Math.min(Math.max(1, parseInt(request.query.pageSize as string) || 10), 100);
+    const category = request.query.category as string;
     const offset = (page - 1) * pageSize;
-    // Firestore는 offset 지원, 단 성능 이슈 주의
-    const snapshot = await admin.firestore().collection('news')
-      .orderBy('createdAt', 'desc')
+    
+    let query = admin.firestore().collection('news').orderBy('createdAt', 'desc');
+    
+    // 카테고리 필터링
+    if (category) {
+      if (category === 'politics') {
+        // 정치 카테고리만
+        query = query.where('category', '==', '정치');
+      } else if (category === 'all') {
+        // 정치 제외한 모든 카테고리
+        query = query.where('category', '!=', '정치');
+      }
+    }
+    
+    const snapshot = await query
       .offset(offset)
       .limit(pageSize)
       .get();
@@ -131,7 +144,7 @@ export const getNewsListAPI = onRequest({
     response.json({
       success: true,
       message: `${news.length}건의 뉴스 목록을 반환합니다.`,
-      data: { page, pageSize, count: news.length, news }
+      data: { page, pageSize, count: news.length, news, category }
     });
   } catch (error) {
     logger.error("뉴스 목록 페이지네이션 조회 오류:", error);
@@ -164,5 +177,28 @@ export const getNewsDetailAPI = onRequest({
   } catch (error) {
     logger.error("뉴스 상세 조회/조회수 증가 오류:", error);
     response.status(500).json({ success: false, message: "뉴스 상세 조회 오류", error: error instanceof Error ? error.message : error });
+  }
+});
+
+/**
+ * 조회수만 업데이트하는 HTTP 함수
+ * 쿼리: docId(필수)
+ */
+export const updateNewsViewCountAPI = onRequest({
+  timeoutSeconds: 30
+}, async (request, response) => {
+  try {
+    const docId = request.query.docId as string;
+    if (!docId) {
+      response.status(400).json({ success: false, message: "docId 파라미터가 필요합니다." });
+      return;
+    }
+    
+    // 조회수 증가
+    await increaseNewsViewCount(docId);
+    response.json({ success: true, message: "조회수 업데이트 완료" });
+  } catch (error) {
+    logger.error("조회수 업데이트 오류:", error);
+    response.status(500).json({ success: false, message: "조회수 업데이트 오류", error: error instanceof Error ? error.message : error });
   }
 }); 

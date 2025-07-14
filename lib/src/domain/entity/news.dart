@@ -1,6 +1,9 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:json_annotation/json_annotation.dart';
+import 'news_entity.dart';
 
 part 'news.freezed.dart';
+part 'news.g.dart';
 
 @freezed
 abstract class News with _$News {
@@ -16,14 +19,8 @@ abstract class News with _$News {
     String? summary3lines,
     String? easySummary,
     List<NewsEntity>? entities,
+    int? viewCount,
   }) = _News;
-}
 
-@freezed
-abstract class NewsEntity with _$NewsEntity {
-  const factory NewsEntity({
-    required String text,
-    required String type,
-    required String description,
-  }) = _NewsEntity;
+  factory News.fromJson(Map<String, dynamic> json) => _$NewsFromJson(json);
 }

@@ -75,9 +75,11 @@ ${news.id}. ${news.title}
 `).join('\n')}
 
 각 뉴스에 대해 다음 3가지 요약을 JSON 형태로 응답해주세요:
-1. summary: 1문단 요약
+1. summary: 1문단 요약 (2~3문장, 각 문장 끝에 줄 바꿈(\n) 추가)
 2. summary3lines: 3줄 요약 (각 줄은 짧고 간결하게)
-3. easySummary: 초등학생도 이해할 수 있는 쉬운 단어로 1문단 요약
+3. easySummary: 초등학생도 이해할 수 있는 쉬운 단어로 1문단 요약 (2~3문장, 각 문장 끝에 줄 바꿈(\n) 추가)
+
+**일반 요약과 쉬운 요약은 2~3문장으로 작성하고, 각 문장 끝에는 반드시 줄 바꿈(\\n)을 넣어주세요.**
 
 응답 형식:
 {
@@ -188,7 +190,7 @@ ${news.id}. ${news.title}
 각 뉴스에 대해 다음 정보를 제공해주세요:
 - text: 본문에서 발견된 단어/구문
 - type: 엔터티 타입 (PERSON: 인명, COUNTRY: 국가, ORGANIZATION: 기관, LOCATION: 장소, COMPANY: 회사명)
-- description: 해당 엔터티에 대한 짧은 1줄 설명
+- description: 해당 엔터티에 대한 두 줄 분량의 자세한 설명
 
 응답 형식:
 {
@@ -199,12 +201,12 @@ ${news.id}. ${news.title}
         {
           "text": "윤석열",
           "type": "PERSON", 
-          "description": "대한민국 대통령"
+          "description": "대한민국 대통령. 2022년 5월부터 대한민국의 대통령으로 재임 중이다."
         },
         {
           "text": "서울",
           "type": "LOCATION",
-          "description": "대한민국 수도"
+          "description": "대한민국의 수도. 정치, 경제, 문화의 중심지로 다양한 기관과 기업이 위치해 있다."
         }
       ]
     },
@@ -214,7 +216,7 @@ ${news.id}. ${news.title}
         {
           "text": "삼성전자",
           "type": "COMPANY",
-          "description": "대한민국 전자기업"
+          "description": "대한민국을 대표하는 글로벌 전자기업. 반도체, 스마트폰 등 다양한 전자제품을 생산한다."
         }
       ]
     }
@@ -342,10 +344,7 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
         try {
           const fullContent = await extractSBSNewsContent(item.link.trim());
           if (fullContent) {
-            const enhancedDescription = fullContent.length > 500 
-              ? fullContent.substring(0, 500) + '...' 
-              : fullContent;
-            newsItem.description = enhancedDescription;
+            newsItem.description = fullContent;
           }
         } catch (error) {
           logger.warn(`뉴스 본문 가져오기 실패 (${item.link}):`, error);

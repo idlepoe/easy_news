@@ -26,6 +26,7 @@ mixin _$News {
   String? get summary3lines;
   String? get easySummary;
   List<NewsEntity>? get entities;
+  int? get viewCount;
 
   /// Create a copy of News
   /// with the given fields replaced by the non-null parameter values.
@@ -33,6 +34,9 @@ mixin _$News {
   @pragma('vm:prefer-inline')
   $NewsCopyWith<News> get copyWith =>
       _$NewsCopyWithImpl<News>(this as News, _$identity);
+
+  /// Serializes this News to a JSON map.
+  Map<String, dynamic> toJson();
 
   @override
   bool operator ==(Object other) {
@@ -54,9 +58,12 @@ mixin _$News {
                 other.summary3lines == summary3lines) &&
             (identical(other.easySummary, easySummary) ||
                 other.easySummary == easySummary) &&
-            const DeepCollectionEquality().equals(other.entities, entities));
+            const DeepCollectionEquality().equals(other.entities, entities) &&
+            (identical(other.viewCount, viewCount) ||
+                other.viewCount == viewCount));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -70,11 +77,12 @@ mixin _$News {
       summary,
       summary3lines,
       easySummary,
-      const DeepCollectionEquality().hash(entities));
+      const DeepCollectionEquality().hash(entities),
+      viewCount);
 
   @override
   String toString() {
-    return 'News(id: $id, title: $title, description: $description, link: $link, mediaUrl: $mediaUrl, category: $category, pubDate: $pubDate, summary: $summary, summary3lines: $summary3lines, easySummary: $easySummary, entities: $entities)';
+    return 'News(id: $id, title: $title, description: $description, link: $link, mediaUrl: $mediaUrl, category: $category, pubDate: $pubDate, summary: $summary, summary3lines: $summary3lines, easySummary: $easySummary, entities: $entities, viewCount: $viewCount)';
   }
 }
 
@@ -94,7 +102,8 @@ abstract mixin class $NewsCopyWith<$Res> {
       String? summary,
       String? summary3lines,
       String? easySummary,
-      List<NewsEntity>? entities});
+      List<NewsEntity>? entities,
+      int? viewCount});
 }
 
 /// @nodoc
@@ -120,6 +129,7 @@ class _$NewsCopyWithImpl<$Res> implements $NewsCopyWith<$Res> {
     Object? summary3lines = freezed,
     Object? easySummary = freezed,
     Object? entities = freezed,
+    Object? viewCount = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -166,12 +176,16 @@ class _$NewsCopyWithImpl<$Res> implements $NewsCopyWith<$Res> {
           ? _self.entities
           : entities // ignore: cast_nullable_to_non_nullable
               as List<NewsEntity>?,
+      viewCount: freezed == viewCount
+          ? _self.viewCount
+          : viewCount // ignore: cast_nullable_to_non_nullable
+              as int?,
     ));
   }
 }
 
 /// @nodoc
-
+@JsonSerializable()
 class _News implements News {
   const _News(
       {required this.id,
@@ -184,8 +198,10 @@ class _News implements News {
       this.summary,
       this.summary3lines,
       this.easySummary,
-      final List<NewsEntity>? entities})
+      final List<NewsEntity>? entities,
+      this.viewCount})
       : _entities = entities;
+  factory _News.fromJson(Map<String, dynamic> json) => _$NewsFromJson(json);
 
   @override
   final String id;
@@ -217,6 +233,9 @@ class _News implements News {
     return EqualUnmodifiableListView(value);
   }
 
+  @override
+  final int? viewCount;
+
   /// Create a copy of News
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -224,6 +243,13 @@ class _News implements News {
   @pragma('vm:prefer-inline')
   _$NewsCopyWith<_News> get copyWith =>
       __$NewsCopyWithImpl<_News>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$NewsToJson(
+      this,
+    );
+  }
 
   @override
   bool operator ==(Object other) {
@@ -245,9 +271,12 @@ class _News implements News {
                 other.summary3lines == summary3lines) &&
             (identical(other.easySummary, easySummary) ||
                 other.easySummary == easySummary) &&
-            const DeepCollectionEquality().equals(other._entities, _entities));
+            const DeepCollectionEquality().equals(other._entities, _entities) &&
+            (identical(other.viewCount, viewCount) ||
+                other.viewCount == viewCount));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -261,11 +290,12 @@ class _News implements News {
       summary,
       summary3lines,
       easySummary,
-      const DeepCollectionEquality().hash(_entities));
+      const DeepCollectionEquality().hash(_entities),
+      viewCount);
 
   @override
   String toString() {
-    return 'News(id: $id, title: $title, description: $description, link: $link, mediaUrl: $mediaUrl, category: $category, pubDate: $pubDate, summary: $summary, summary3lines: $summary3lines, easySummary: $easySummary, entities: $entities)';
+    return 'News(id: $id, title: $title, description: $description, link: $link, mediaUrl: $mediaUrl, category: $category, pubDate: $pubDate, summary: $summary, summary3lines: $summary3lines, easySummary: $easySummary, entities: $entities, viewCount: $viewCount)';
   }
 }
 
@@ -286,7 +316,8 @@ abstract mixin class _$NewsCopyWith<$Res> implements $NewsCopyWith<$Res> {
       String? summary,
       String? summary3lines,
       String? easySummary,
-      List<NewsEntity>? entities});
+      List<NewsEntity>? entities,
+      int? viewCount});
 }
 
 /// @nodoc
@@ -312,6 +343,7 @@ class __$NewsCopyWithImpl<$Res> implements _$NewsCopyWith<$Res> {
     Object? summary3lines = freezed,
     Object? easySummary = freezed,
     Object? entities = freezed,
+    Object? viewCount = freezed,
   }) {
     return _then(_News(
       id: null == id
@@ -358,166 +390,10 @@ class __$NewsCopyWithImpl<$Res> implements _$NewsCopyWith<$Res> {
           ? _self._entities
           : entities // ignore: cast_nullable_to_non_nullable
               as List<NewsEntity>?,
-    ));
-  }
-}
-
-/// @nodoc
-mixin _$NewsEntity {
-  String get text;
-  String get type;
-  String get description;
-
-  /// Create a copy of NewsEntity
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  $NewsEntityCopyWith<NewsEntity> get copyWith =>
-      _$NewsEntityCopyWithImpl<NewsEntity>(this as NewsEntity, _$identity);
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is NewsEntity &&
-            (identical(other.text, text) || other.text == text) &&
-            (identical(other.type, type) || other.type == type) &&
-            (identical(other.description, description) ||
-                other.description == description));
-  }
-
-  @override
-  int get hashCode => Object.hash(runtimeType, text, type, description);
-
-  @override
-  String toString() {
-    return 'NewsEntity(text: $text, type: $type, description: $description)';
-  }
-}
-
-/// @nodoc
-abstract mixin class $NewsEntityCopyWith<$Res> {
-  factory $NewsEntityCopyWith(
-          NewsEntity value, $Res Function(NewsEntity) _then) =
-      _$NewsEntityCopyWithImpl;
-  @useResult
-  $Res call({String text, String type, String description});
-}
-
-/// @nodoc
-class _$NewsEntityCopyWithImpl<$Res> implements $NewsEntityCopyWith<$Res> {
-  _$NewsEntityCopyWithImpl(this._self, this._then);
-
-  final NewsEntity _self;
-  final $Res Function(NewsEntity) _then;
-
-  /// Create a copy of NewsEntity
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? text = null,
-    Object? type = null,
-    Object? description = null,
-  }) {
-    return _then(_self.copyWith(
-      text: null == text
-          ? _self.text
-          : text // ignore: cast_nullable_to_non_nullable
-              as String,
-      type: null == type
-          ? _self.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
-      description: null == description
-          ? _self.description
-          : description // ignore: cast_nullable_to_non_nullable
-              as String,
-    ));
-  }
-}
-
-/// @nodoc
-
-class _NewsEntity implements NewsEntity {
-  const _NewsEntity(
-      {required this.text, required this.type, required this.description});
-
-  @override
-  final String text;
-  @override
-  final String type;
-  @override
-  final String description;
-
-  /// Create a copy of NewsEntity
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @pragma('vm:prefer-inline')
-  _$NewsEntityCopyWith<_NewsEntity> get copyWith =>
-      __$NewsEntityCopyWithImpl<_NewsEntity>(this, _$identity);
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _NewsEntity &&
-            (identical(other.text, text) || other.text == text) &&
-            (identical(other.type, type) || other.type == type) &&
-            (identical(other.description, description) ||
-                other.description == description));
-  }
-
-  @override
-  int get hashCode => Object.hash(runtimeType, text, type, description);
-
-  @override
-  String toString() {
-    return 'NewsEntity(text: $text, type: $type, description: $description)';
-  }
-}
-
-/// @nodoc
-abstract mixin class _$NewsEntityCopyWith<$Res>
-    implements $NewsEntityCopyWith<$Res> {
-  factory _$NewsEntityCopyWith(
-          _NewsEntity value, $Res Function(_NewsEntity) _then) =
-      __$NewsEntityCopyWithImpl;
-  @override
-  @useResult
-  $Res call({String text, String type, String description});
-}
-
-/// @nodoc
-class __$NewsEntityCopyWithImpl<$Res> implements _$NewsEntityCopyWith<$Res> {
-  __$NewsEntityCopyWithImpl(this._self, this._then);
-
-  final _NewsEntity _self;
-  final $Res Function(_NewsEntity) _then;
-
-  /// Create a copy of NewsEntity
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $Res call({
-    Object? text = null,
-    Object? type = null,
-    Object? description = null,
-  }) {
-    return _then(_NewsEntity(
-      text: null == text
-          ? _self.text
-          : text // ignore: cast_nullable_to_non_nullable
-              as String,
-      type: null == type
-          ? _self.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
-      description: null == description
-          ? _self.description
-          : description // ignore: cast_nullable_to_non_nullable
-              as String,
+      viewCount: freezed == viewCount
+          ? _self.viewCount
+          : viewCount // ignore: cast_nullable_to_non_nullable
+              as int?,
     ));
   }
 }

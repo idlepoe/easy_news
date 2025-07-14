@@ -29,6 +29,8 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.4
   google_fonts: ^6.2.1
+  cached_network_image: ^3.3.1
+  share_plus: ^7.2.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

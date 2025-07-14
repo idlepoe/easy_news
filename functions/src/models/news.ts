@@ -20,6 +20,7 @@ export interface NewsItem {
   summary3lines?: string;
   easySummary?: string;
   entities?: Entity[]; // 엔터티 정보 추가
+  viewCount?: number; // 조회수 필드 추가
 }
 
 // RSS 피드 응답 인터페이스

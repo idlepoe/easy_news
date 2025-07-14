@@ -5,6 +5,13 @@ class GetNewsListUseCase {
   final NewsRepository repository;
   GetNewsListUseCase(this.repository);
 
-  Future<List<News>> call({int page = 1, int pageSize = 10}) =>
-      repository.getNewsList(page: page, pageSize: pageSize);
+  Future<List<News>> call({
+    int page = 1,
+    int pageSize = 10,
+    String? category,
+  }) => repository.getNewsList(
+    page: page,
+    pageSize: pageSize,
+    category: category,
+  );
 }

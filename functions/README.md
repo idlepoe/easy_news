@@ -81,7 +81,7 @@ firebase functions:log
 현재는 하드코딩된 RSS URL을 사용하지만, 필요에 따라 환경 변수로 설정할 수 있습니다:
 
 ```typescript
-const RSS_URL = process.env.SBS_RSS_URL || "https://news.sbs.co.kr/news/newsflashRssFeed.do?plink=RSSREADER";
+const RSS_URL = process.env.SBS_RSS_URL || "https://news.sbs.co.kr/news/TopicRssFeed.do?plink=RSSREADER";
 ```
 
 ## 문제 해결
