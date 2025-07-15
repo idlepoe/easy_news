@@ -1,11 +1,11 @@
 {
-    "name": "easy_news",
-    "short_name": "easy_news",
+    "name": "쉬운 뉴스",
+    "short_name": "쉬운 뉴스",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#f8e8fd",
-    "theme_color": "#f8e8fd",
-    "description": "A new Flutter project.",
+    "background_color": "#ffffff",
+    "theme_color": "#1976D2",
+    "description": "복잡한 뉴스를 쉽게 이해할 수 있도록 도와주는 뉴스 앱입니다.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
