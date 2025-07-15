@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../domain/entity/news.dart';
 import '../../data/constants/app_colors.dart';
 import 'news_info_badge.dart';
+import 'rounded_circular_progress.dart';
 
 class NewsCard extends StatelessWidget {
   final News news;
@@ -78,11 +79,7 @@ class NewsCard extends StatelessWidget {
                         placeholder: (context, url) => Container(
                           width: double.infinity,
                           color: Theme.of(context).cardColor,
-                          child: Icon(
-                            Icons.image_outlined,
-                            color: Theme.of(context).textTheme.bodySmall?.color,
-                            size: 48,
-                          ),
+                          child: const Center(child: RoundedCircularProgress()),
                         ),
                         errorWidget: (context, url, error) => Container(
                           width: double.infinity,

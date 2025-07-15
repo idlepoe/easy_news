@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:go_router/go_router.dart';
 import '../controller/news_controller.dart';
 import '../../domain/entity/news.dart';
 import '../../domain/entity/news_entity.dart';
@@ -113,6 +114,37 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
 
   String _formatKoreanDateTime(DateTime dateTime) {
     return DateFormat('yyyy년 M월 d일 H시 mm분', 'ko_KR').format(dateTime);
+  }
+
+  /// 뒤로가기 버튼 생성
+  Widget _buildBackButton() {
+    return IconButton(
+      icon: Icon(
+        Icons.arrow_back,
+        color: Theme.of(context).textTheme.titleLarge?.color,
+      ),
+      onPressed: () => _handleBackNavigation(),
+    );
+  }
+
+  /// 뒤로가기 네비게이션 처리
+  void _handleBackNavigation() {
+    // 현재 라우터 상태 확인
+    final router = GoRouter.of(context);
+
+    // 디버그 로그
+    print('현재 라우터: $router');
+
+    // 이전 화면이 있는지 확인
+    if (router.canPop()) {
+      // 이전 화면이 있으면 뒤로가기
+      print('이전 화면으로 뒤로가기');
+      router.pop();
+    } else {
+      // 이전 화면이 없으면 홈으로 이동
+      print('이전 화면이 없어서 홈으로 이동');
+      router.go('/');
+    }
   }
 
   Color _getEntityColor(String type) {
@@ -249,6 +281,7 @@ ${news.description}
         iconTheme: IconThemeData(
           color: Theme.of(context).textTheme.titleLarge?.color,
         ),
+        leading: _buildBackButton(),
         actions: [],
       ),
       body: news == null
@@ -278,10 +311,8 @@ ${news.description}
                                   width: double.infinity,
                                   height: 200,
                                   color: AppColors.surface,
-                                  child: Icon(
-                                    Icons.image_outlined,
-                                    size: 64,
-                                    color: AppColors.textTertiary,
+                                  child: const Center(
+                                    child: RoundedCircularProgress(),
                                   ),
                                 ),
                                 errorWidget: (context, url, error) => Container(
@@ -703,7 +734,7 @@ ${news.description}
                   style: TextStyle(
                     fontSize: fontSize,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).textTheme.titleMedium?.color,
                   ),
                 ),
               ),
@@ -761,7 +792,7 @@ ${news.description}
                   style: TextStyle(
                     fontSize: fontSize,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: Theme.of(context).textTheme.titleMedium?.color,
                   ),
                 ),
               ),

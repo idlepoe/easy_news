@@ -37,7 +37,7 @@ const _newsBodyDisplayKey = 'news_body_display_type';
 const _popularNewsNotifyKey = 'popular_news_notify';
 
 class NewsBodyDisplayNotifier extends StateNotifier<NewsBodyDisplayType> {
-  NewsBodyDisplayNotifier() : super(NewsBodyDisplayType.description) {
+  NewsBodyDisplayNotifier() : super(NewsBodyDisplayType.easySummary) {
     _loadType();
   }
 
@@ -47,7 +47,7 @@ class NewsBodyDisplayNotifier extends StateNotifier<NewsBodyDisplayType> {
     if (value != null) {
       state = NewsBodyDisplayType.values.firstWhere(
         (e) => e.name == value,
-        orElse: () => NewsBodyDisplayType.description,
+        orElse: () => NewsBodyDisplayType.easySummary,
       );
     }
   }

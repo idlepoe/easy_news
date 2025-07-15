@@ -89,7 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showLicensePage() {
     showLicensePage(
       context: context,
-      applicationName: 'Easy News',
+      applicationName: '쉬운 뉴스',
       applicationVersion: packageInfo?.version ?? '1.0.0',
       applicationIcon: Padding(
         padding: const EdgeInsets.all(8.0),

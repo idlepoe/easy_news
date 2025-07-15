@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../controller/news_controller.dart';
 import '../controller/news_list_notifier.dart';
@@ -250,15 +251,7 @@ class NewsListPage extends ConsumerWidget {
                               news: news,
                               subtitle: subtitle,
                               onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => NewsDetailPage(
-                                      newsId: news.id,
-                                      initialNews: news,
-                                    ),
-                                  ),
-                                );
+                                context.push('/news/${news.id}', extra: news);
                               },
                             ),
                           );
@@ -331,10 +324,7 @@ class NewsListPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
+              context.push('/settings');
             },
           ),
         ],
