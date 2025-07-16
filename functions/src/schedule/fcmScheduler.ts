@@ -23,7 +23,7 @@ function getKoreaTime(): Date {
  */
 export const fcmNewsScheduler = onSchedule(
   {
-    schedule: '0 */3 * * *', // 3시간마다 실행 (매시 0분)
+    schedule: '0 * * * *', // 1시간마다 실행 (매시 0분)
     timeZone: 'Asia/Seoul',
     timeoutSeconds: 300,
   },
@@ -42,33 +42,39 @@ export const fcmNewsScheduler = onSchedule(
         return;
       }
       
-      // 최신 뉴스 중 아직 발송하지 않은 항목 조회
+      // 최신 뉴스 30건을 받아온 뒤, isSend가 true가 아닌 가장 최신 뉴스 1건을 발송 대상으로 선택
       const newsQuery = db.collection('news')
-        .where('isSend', '!=', true)
-        .orderBy('isSend', 'desc')
         .orderBy('pubDate', 'desc')
-        .limit(1);
-      
+        .limit(30);
       const newsSnapshot = await newsQuery.get();
-      
-      if (newsSnapshot.empty) {
+      const filteredDocs = newsSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.isSend !== true;
+      });
+      if (filteredDocs.length === 0) {
         logger.info('발송할 새로운 뉴스가 없습니다.');
         return;
       }
-      
-      const newsDoc = newsSnapshot.docs[0];
+      // 가장 최신 뉴스 1건 사용
+      const newsDoc = filteredDocs[0];
       const newsData = newsDoc.data();
       const newsId = newsDoc.id;
+      // 디버깅을 위한 로그
+      logger.info(`선택된 뉴스: ${newsId}`);
+      logger.info(`뉴스 제목: ${newsData.title}`);
+      logger.info(`isSend 상태: ${newsData.isSend}`);
+      logger.info(`easySummary 존재: ${!!newsData.easySummary}`);
+      logger.info(`summary3lines 존재: ${!!newsData.summary3lines}`);
       
-      // easySummary 있는지 확인
-      if (!newsData.easySummary || newsData.easySummary.trim() === '') {
-        logger.warn(`뉴스 ${newsId}에 easySummary가 없습니다.`);
+      // easySummary 또는 summary3lines 있는지 확인
+      let summary = newsData.easySummary || newsData.summary3lines;
+      if (!summary || summary.trim() === '') {
+        logger.warn(`뉴스 ${newsId}에 easySummary 또는 summary3lines가 없습니다.`);
         return;
       }
       
       // 뉴스 제목과 내용 분리
       const title = newsData.title || '인기뉴스';
-      const summary = newsData.easySummary;
       
       // 이미지 URL 설정 (뉴스 이미지가 있으면 사용, 없으면 포함하지 않음)
       const imageUrl = newsData.mediaUrl;
@@ -217,16 +223,16 @@ export const fcmTestAPI = onRequest(
       const newsData = newsDoc.data();
       const newsId = newsDoc.id;
       
-      // easySummary 있는지 확인
-      if (!newsData.easySummary || newsData.easySummary.trim() === '') {
-        logger.warn(`뉴스 ${newsId}에 summary3lines가 없습니다.`);
-        res.status(400).json({ error: '뉴스에 summary3lines가 없습니다.' });
+      // easySummary 또는 summary3lines 있는지 확인
+      let summary = newsData.easySummary || newsData.summary3lines;
+      if (!summary || summary.trim() === '') {
+        logger.warn(`뉴스 ${newsId}에 easySummary 또는 summary3lines가 없습니다.`);
+        res.status(400).json({ error: '뉴스에 easySummary 또는 summary3lines가 없습니다.' });
         return;
       }
       
       // 뉴스 제목과 내용 분리
       const title = newsData.title || '테스트 뉴스';
-      const summary = newsData.easySummary;
       
       // 이미지 URL 설정 (뉴스 이미지가 있으면 사용, 없으면 포함하지 않음)
       const imageUrl = newsData.mediaUrl;
