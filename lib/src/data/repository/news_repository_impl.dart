@@ -1,6 +1,7 @@
 import '../../domain/entity/news.dart';
 import '../../domain/entity/news_entity.dart';
 import '../../domain/repository/news_repository.dart';
+import '../../domain/usecase/get_news_list_usecase.dart';
 import '../source/news_api_source.dart';
 import '../services/local_cache_service.dart';
 
@@ -11,10 +12,11 @@ class NewsRepositoryImpl implements NewsRepository {
   NewsRepositoryImpl(this.apiSource) : cacheService = LocalCacheService();
 
   @override
-  Future<List<News>> getNewsList({
+  Future<NewsListResult> getNewsList({
     int page = 1,
     int pageSize = 10,
     String? category,
+    String? cursor,
   }) async {
     // 첫 페이지인 경우에만 캐시 확인
     if (page == 1) {
@@ -24,16 +26,24 @@ class NewsRepositoryImpl implements NewsRepository {
       if (cachedNews != null && cachedNews.isNotEmpty) {
         // 캐시된 데이터가 있으면 먼저 반환하고 백그라운드에서 갱신
         _refreshNewsListInBackground(category);
-        return cachedNews;
+        return NewsListResult(
+          news: cachedNews,
+          totalSize: 100, // 캐시된 데이터는 충분히 큰 값으로 설정하여 다음 페이지 로드 가능하게 함
+          hasMore: true,
+          nextCursor: null,
+        );
       }
     }
 
     // 캐시가 없거나 첫 페이지가 아닌 경우 API 호출
-    final list = await apiSource.fetchNewsList(
+    final response = await apiSource.fetchNewsList(
       page: page,
       pageSize: pageSize,
       category: category,
+      cursor: cursor,
     );
+
+    final list = response['news'] as List;
     final newsList = list.map((e) {
       final viewCount = e['viewCount'] ?? 0;
       print('📊 뉴스 매핑 - ID: ${e['id']}, viewCount: $viewCount');
@@ -72,17 +82,23 @@ class NewsRepositoryImpl implements NewsRepository {
       await cacheService.cacheNewsList(newsList, category ?? 'all');
     }
 
-    return newsList;
+    return NewsListResult(
+      news: newsList,
+      totalSize: response['totalSize'],
+      hasMore: response['hasMore'] ?? false,
+      nextCursor: response['nextCursor'],
+    );
   }
 
   // 백그라운드에서 뉴스 목록 갱신
   Future<void> _refreshNewsListInBackground(String? category) async {
     try {
-      final list = await apiSource.fetchNewsList(
+      final response = await apiSource.fetchNewsList(
         page: 1,
         pageSize: 10,
         category: category,
       );
+      final list = response['news'] as List;
       final newsList = list
           .map(
             (e) => News(

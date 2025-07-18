@@ -6,9 +6,11 @@ class LoggingInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    // logger.i('🌐 REQUEST[${options.method}] => PATH: ${options.path}');
-    // logger.i('Query Parameters: ${options.queryParameters}');
-    // logger.i('Headers: ${options.headers}');
+    if (options.queryParameters.isNotEmpty) {
+      logger.d(
+        '🌐 REQUEST[${options.method}] => PATH: ${options.path}\n Query Parameters:\n${options.queryParameters.entries.map((e) => '  ${e.key}: ${e.value}').join('\n')}',
+      );
+    }
     super.onRequest(options, handler);
   }
 
@@ -17,8 +19,26 @@ class LoggingInterceptor extends Interceptor {
     final duration = DateTime.now().difference(
       response.requestOptions.extra['startTime'] as DateTime,
     );
+
+    // 뉴스 데이터인 경우 타이틀만 추출
+    String responseData = '';
+    if (response.data != null &&
+        response.data['data'] != null &&
+        response.data['data']['news'] != null) {
+      final newsList = response.data['data']['news'] as List;
+      if (newsList.isNotEmpty) {
+        final titles = newsList
+            .map((news) => news['title'] ?? '제목 없음')
+            .toList();
+        responseData =
+            '뉴스 타이틀: ${titles.join(', ')}${newsList.length > 3 ? '...' : ''}';
+      }
+    } else {
+      responseData = '${response.data}';
+    }
+
     logger.d(
-      '✅ RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}\n⏱️ 걸린 시간: ${duration.inMilliseconds}ms\n📊 Response Data: ${response.data}',
+      '✅ RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}\n⏱️ 걸린 시간: ${duration.inMilliseconds}ms\n📊 Response Data: $responseData',
     );
     super.onResponse(response, handler);
   }

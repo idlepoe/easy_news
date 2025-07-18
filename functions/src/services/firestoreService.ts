@@ -155,6 +155,32 @@ export async function getRecentNews(limit: number = 10): Promise<NewsItem[]> {
 } 
 
 /**
+ * 뉴스 컬렉션의 전체 개수를 가져오는 함수
+ * @param category 카테고리 필터 (선택적)
+ * @returns Promise<number> 전체 뉴스 개수
+ */
+export async function getNewsCount(category?: string): Promise<number> {
+  try {
+    let query: admin.firestore.Query = db.collection('news');
+    
+    // 카테고리 필터링
+    if (category) {
+      if (category === 'politics') {
+        query = query.where('category', '==', '정치');
+      } else if (category === 'all') {
+        query = query.where('category', '!=', '정치');
+      }
+    }
+    
+    const snapshot = await query.get();
+    return snapshot.size;
+  } catch (error) {
+    logger.error("뉴스 개수 조회 중 오류 발생:", error);
+    throw error;
+  }
+}
+
+/**
  * 문서 ID로 뉴스 상세를 반환하는 함수
  * @param docId Firestore 문서 ID
  * @returns Promise<NewsItem | null>

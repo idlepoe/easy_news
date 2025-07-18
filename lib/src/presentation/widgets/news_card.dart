@@ -34,17 +34,13 @@ class NewsCard extends StatelessWidget {
   }
 
   String _formatViewCount(int count) {
-    print('👁️ 조회수 포맷팅 - 원본: $count');
     if (count >= 10000) {
       final formatted = '${(count / 10000).toStringAsFixed(1)}만';
-      print('👁️ 조회수 포맷팅 결과: $formatted');
       return formatted;
     } else if (count >= 1000) {
       final formatted = '${(count / 1000).toStringAsFixed(1)}천';
-      print('👁️ 조회수 포맷팅 결과: $formatted');
       return formatted;
     } else {
-      print('👁️ 조회수 포맷팅 결과: $count');
       return count.toString();
     }
   }
@@ -170,9 +166,6 @@ class NewsCard extends StatelessWidget {
                               final viewCount = news.viewCount ?? 0;
                               final formattedViewCount = _formatViewCount(
                                 viewCount,
-                              );
-                              print(
-                                '🎯 뉴스 카드 조회수 표시 - ID: ${news.id}, viewCount: $viewCount, formatted: $formattedViewCount',
                               );
                               return Text(
                                 formattedViewCount,

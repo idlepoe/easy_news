@@ -209,17 +209,17 @@ class FCMService {
 
   /// 백그라운드 메시지 처리
   void handleBackgroundMessage() {
-    _logger.i('백그라운드 메시지 핸들러 설정');
+    // _logger.i('백그라운드 메시지 핸들러 설정');
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      _logger.i('=== 백그라운드 메시지에서 앱 열림 ===');
-      _logger.i('메시지 ID: ${message.messageId}');
-      _logger.i('제목: ${message.notification?.title}');
-      _logger.i('내용: ${message.notification?.body}');
-      _logger.i('데이터: ${message.data}');
-      _logger.i('발송 시간: ${message.sentTime}');
-      _logger.i('Android 이미지: ${message.notification?.android?.imageUrl}');
-      _logger.i('=== 백그라운드 메시지 처리 완료 ===');
+      // _logger.i('=== 백그라운드 메시지에서 앱 열림 ===');
+      // _logger.i('메시지 ID: ${message.messageId}');
+      // _logger.i('제목: ${message.notification?.title}');
+      // _logger.i('내용: ${message.notification?.body}');
+      // _logger.i('데이터: ${message.data}');
+      // _logger.i('발송 시간: ${message.sentTime}');
+      // _logger.i('Android 이미지: ${message.notification?.android?.imageUrl}');
+      // _logger.i('=== 백그라운드 메시지 처리 완료 ===');
 
       if (kDebugMode) {
         print('=== 백그라운드 메시지에서 앱 열림 ===');

@@ -37,7 +37,7 @@ final getNewsDetailUseCaseProvider = Provider(
 );
 
 // 뉴스 목록 상태 (페이지네이션)
-final newsListProvider = FutureProvider.family<List<News>, int>((
+final newsListProvider = FutureProvider.family<NewsListResult, int>((
   ref,
   page,
 ) async {

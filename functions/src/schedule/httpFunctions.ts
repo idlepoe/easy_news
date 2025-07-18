@@ -1,7 +1,7 @@
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { fetchNewsFromRSS } from "../services/rssService";
-import { saveNewsToFirestore, getRecentNews, getNewsDetailById, increaseNewsViewCount } from "../services/firestoreService";
+import { saveNewsToFirestore, getRecentNews, getNewsDetailById, increaseNewsViewCount, getNewsCount } from "../services/firestoreService";
 import * as admin from "firebase-admin";
 
 /**
@@ -111,7 +111,7 @@ export const getNewsStatus = onRequest({
 
 /**
  * 뉴스 목록을 페이지네이션으로 반환하는 HTTP 함수
- * 쿼리: page(1부터), pageSize(기본 10, 최대 100), category(선택적)
+ * 쿼리: page(1부터), pageSize(기본 10, 최대 100), category(선택적), cursor(선택적)
  */
 export const getNewsListAPI = onRequest({
   timeoutSeconds: 60
@@ -121,9 +121,9 @@ export const getNewsListAPI = onRequest({
     const page = Math.max(1, parseInt(request.query.page as string) || 1);
     const pageSize = Math.min(Math.max(1, parseInt(request.query.pageSize as string) || 10), 100);
     const category = request.query.category as string;
-    const offset = (page - 1) * pageSize;
+    const cursor = request.query.cursor as string; // 커서 기반 페이지네이션용
     
-    let query = admin.firestore().collection('news').orderBy('createdAt', 'desc');
+    let query = admin.firestore().collection('news').orderBy('pubDate', 'desc'); // pubDate 기준 내림차순
     
     // 카테고리 필터링
     if (category) {
@@ -136,15 +136,48 @@ export const getNewsListAPI = onRequest({
       }
     }
     
+    // 커서 기반 페이지네이션 적용
+    if (cursor && page > 1) {
+      try {
+        // 커서를 Timestamp로 변환
+        const cursorTimestamp = admin.firestore.Timestamp.fromMillis(parseInt(cursor));
+        query = query.startAfter(cursorTimestamp);
+      } catch (error) {
+        logger.warn("커서 파싱 실패, 첫 페이지부터 조회:", error);
+      }
+    }
+    
+    // 전체 개수 조회
+    const totalSize = await getNewsCount(category);
+    
     const snapshot = await query
-      .offset(offset)
       .limit(pageSize)
       .get();
+    
     const news = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // 다음 페이지용 커서 생성 (마지막 문서의 pubDate 사용)
+    let nextCursor = null;
+    if (news.length > 0 && news.length === pageSize) {
+      const lastNews = news[news.length - 1] as any;
+      if (lastNews.pubDate && lastNews.pubDate._seconds) {
+        nextCursor = (lastNews.pubDate._seconds * 1000).toString();
+      }
+    }
+    
     response.json({
       success: true,
       message: `${news.length}건의 뉴스 목록을 반환합니다.`,
-      data: { page, pageSize, count: news.length, news, category }
+      data: { 
+        page, 
+        pageSize, 
+        count: news.length, 
+        totalSize,
+        news, 
+        category,
+        nextCursor,
+        hasMore: news.length === pageSize
+      }
     });
   } catch (error) {
     logger.error("뉴스 목록 페이지네이션 조회 오류:", error);

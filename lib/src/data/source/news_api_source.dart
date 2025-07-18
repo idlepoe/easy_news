@@ -4,22 +4,31 @@ class NewsApiSource {
   final Dio dio;
   NewsApiSource(this.dio);
 
-  Future<List<Map<String, dynamic>>> fetchNewsList({
+  Future<Map<String, dynamic>> fetchNewsList({
     int page = 1,
     int pageSize = 10,
     String? category,
+    String? cursor,
   }) async {
     final queryParams = <String, dynamic>{'page': page, 'pageSize': pageSize};
     if (category != null) {
       queryParams['category'] = category;
+    }
+    if (cursor != null) {
+      queryParams['cursor'] = cursor;
     }
 
     final response = await dio.get(
       'https://getnewslistapi-z54jot6a5a-uc.a.run.app',
       queryParameters: queryParams,
     );
-    final data = response.data['data']['news'] as List;
-    return data.cast<Map<String, dynamic>>();
+    final data = response.data['data'];
+    return {
+      'news': data['news'] as List,
+      'totalSize': data['totalSize'],
+      'hasMore': data['hasMore'],
+      'nextCursor': data['nextCursor'],
+    };
   }
 
   Future<Map<String, dynamic>> fetchNewsDetail(String id) async {
