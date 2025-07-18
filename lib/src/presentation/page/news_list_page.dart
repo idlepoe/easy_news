@@ -211,36 +211,20 @@ class NewsListPage extends ConsumerWidget {
                               );
                               break;
                             case NewsBodyDisplayType.summary:
-                              final summary = (news.summary ?? '').trim();
-                              if (summary.isEmpty) {
-                                subtitle = Text(
-                                  news.description,
-                                  maxLines: 5,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: fontSize),
-                                );
-                              } else {
-                                subtitle = Text(
-                                  summary,
-                                  maxLines: 5,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: fontSize),
-                                );
-                              }
+                              subtitle = Text(
+                                news.summary!,
+                                style: TextStyle(fontSize: fontSize),
+                              );
                               break;
                             case NewsBodyDisplayType.summary3lines:
                               subtitle = Text(
                                 (news.summary3lines ?? '').trim(),
-                                maxLines: 5,
-                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontSize: fontSize),
                               );
                               break;
                             case NewsBodyDisplayType.easySummary:
                               subtitle = Text(
                                 (news.easySummary ?? '').trim(),
-                                maxLines: 5,
-                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontSize: fontSize),
                               );
                               break;
@@ -307,7 +291,7 @@ class NewsListPage extends ConsumerWidget {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Easy News',
+          '뉴스 한입',
           style: TextStyle(
             color: Theme.of(context).textTheme.titleLarge?.color,
             fontSize: 20,

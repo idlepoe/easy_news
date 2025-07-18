@@ -89,7 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showLicensePage() {
     showLicensePage(
       context: context,
-      applicationName: '쉬운 뉴스',
+      applicationName: '뉴스 한입',
       applicationVersion: packageInfo?.version ?? '1.0.0',
       applicationIcon: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -339,7 +339,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ListTile(
                   leading: Icon(Icons.article, color: AppColors.primary),
                   title: Text(
-                    'Easy News',
+                    '뉴스 한입',
                     style: TextStyle(
                       color: Theme.of(context).textTheme.bodyLarge?.color,
                       fontWeight: FontWeight.w600,
