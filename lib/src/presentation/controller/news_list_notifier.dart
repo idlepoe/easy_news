@@ -20,8 +20,16 @@ class NewsListNotifier extends StateNotifier<AsyncValue<List<News>>>
 
   NewsListNotifier(this.ref) : super(const AsyncValue.loading()) {
     WidgetsBinding.instance.addObserver(this);
-    _loadCachedNews();
-    loadInitialNews();
+    _initializeNews();
+  }
+
+  // 초기화를 순차적으로 처리
+  Future<void> _initializeNews() async {
+    // 1. 먼저 캐시된 데이터 로드
+    await _loadCachedNews();
+
+    // 2. 그 다음 API 호출로 최신 데이터 가져오기
+    await loadInitialNews();
   }
 
   @override
@@ -68,7 +76,7 @@ class NewsListNotifier extends StateNotifier<AsyncValue<List<News>>>
   }
 
   Future<void> loadInitialNews({String? category}) async {
-    state = const AsyncValue.loading();
+    // 로딩 상태 설정 제거 - 캐시된 데이터가 이미 표시된 상태에서 바로 갱신
     try {
       final useCase = ref.read(getNewsListUseCaseProvider);
       final result = await useCase(page: 1, pageSize: 10, category: category);
@@ -90,6 +98,7 @@ class NewsListNotifier extends StateNotifier<AsyncValue<List<News>>>
     if (_isRefreshing) return;
 
     _isRefreshing = true;
+    // 현재 데이터를 유지하면서 로딩 상태 표시
     state = AsyncValue.data(_allNews);
 
     try {
