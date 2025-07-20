@@ -36,6 +36,9 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
   // TTS 관련 변수
   FlutterTts? _flutterTts;
   bool _isSpeaking = false;
+  double _speechProgress = 0.0;
+  String _currentSpeechText = '';
+  String _fullSpeechText = '';
 
   // 스크롤 관련 변수
   final ScrollController _scrollController = ScrollController();
@@ -86,14 +89,33 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
     _flutterTts!.setCompletionHandler(() {
       setState(() {
         _isSpeaking = false;
+        _speechProgress = 0.0;
+        _currentSpeechText = '';
+        _fullSpeechText = '';
       });
     });
 
     _flutterTts!.setErrorHandler((msg) {
       setState(() {
         _isSpeaking = false;
+        _speechProgress = 0.0;
+        _currentSpeechText = '';
+        _fullSpeechText = '';
       });
       print('TTS 에러: $msg');
+    });
+
+    // 진행 상황 추적을 위한 핸들러
+    _flutterTts!.setProgressHandler((text, start, end, word) {
+      if (mounted) {
+        setState(() {
+          _currentSpeechText = text;
+          // 간단한 진행률 계산 (단어 기반)
+          if (text.isNotEmpty) {
+            _speechProgress = (end / text.length).clamp(0.0, 1.0);
+          }
+        });
+      }
     });
   }
 
@@ -226,6 +248,9 @@ ${news.description}
       await _flutterTts!.stop();
       setState(() {
         _isSpeaking = false;
+        _speechProgress = 0.0;
+        _currentSpeechText = '';
+        _fullSpeechText = '';
       });
     } else {
       final newsAsync = ref.watch(newsDetailProvider(widget.newsId));
@@ -238,11 +263,16 @@ ${news.description}
           .replaceAll(RegExp(r'<[^>]*>'), '')
           .replaceAll(RegExp(r'&[^;]+;'), '');
 
+      final fullText = '${news.title}. $cleanText';
+
       setState(() {
         _isSpeaking = true;
+        _speechProgress = 0.0;
+        _currentSpeechText = '';
+        _fullSpeechText = fullText;
       });
 
-      await _flutterTts!.speak('${news.title}. $cleanText');
+      await _flutterTts!.speak(fullText);
     }
   }
 
@@ -393,6 +423,108 @@ ${news.description}
                             ],
                           ),
                           const SizedBox(height: 16),
+
+                          // TTS 재생바 (애니메이션 적용)
+                          AnimatedOpacity(
+                            duration: const Duration(milliseconds: 400),
+                            opacity: _isSpeaking ? 1.0 : 0.0,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeInOut,
+                              height: _isSpeaking ? 80 : 0,
+                              margin: EdgeInsets.only(
+                                bottom: _isSpeaking ? 16 : 0,
+                              ),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.primary.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.volume_up,
+                                          color: AppColors.primary,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '뉴스 듣는 중...',
+                                          style: TextStyle(
+                                            fontSize: fontSize - 1,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          '${(_speechProgress * 100).toInt()}%',
+                                          style: TextStyle(
+                                            fontSize: fontSize - 2,
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      curve: Curves.easeInOut,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surface,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          // 배경
+                                          Container(
+                                            width: double.infinity,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.surface,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                          // 진행률 표시 (애니메이션 적용)
+                                          AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            curve: Curves.easeInOut,
+                                            width:
+                                                MediaQuery.of(
+                                                  context,
+                                                ).size.width *
+                                                _speechProgress *
+                                                0.85,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
 
                           // 본문 - entities 하이라이트 적용
                           _buildHighlightedText(

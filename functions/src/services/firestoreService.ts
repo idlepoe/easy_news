@@ -212,3 +212,107 @@ export async function increaseNewsViewCount(docId: string): Promise<void> {
     throw error;
   }
 } 
+
+/**
+ * 조회수 기준으로 뉴스를 가져오는 함수
+ * @param limit 가져올 뉴스 개수 (기본값: 10)
+ * @returns Promise<NewsItem[]> 뉴스 아이템 배열
+ */
+export async function getPopularNews(limit: number = 10): Promise<NewsItem[]> {
+  try {
+    const snapshot = await db.collection('news')
+      .orderBy('viewCount', 'desc')
+      .limit(limit)
+      .get();
+
+    const newsItems: NewsItem[] = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      newsItems.push({
+        title: data.title,
+        link: data.link,
+        description: data.description,
+        pubDate: data.pubDate,
+        guid: data.guid,
+        category: data.category,
+        mediaUrl: data.mediaUrl,
+        summary: data.summary,
+        summary3lines: data.summary3lines,
+        easySummary: data.easySummary,
+        entities: data.entities,
+        viewCount: data.viewCount || 0
+      });
+    });
+
+    return newsItems;
+  } catch (error) {
+    logger.error("조회수 기준 뉴스를 가져오는 중 오류 발생:", error);
+    throw error;
+  }
+}
+
+/**
+ * 조회수 기준으로 뉴스 목록을 페이지네이션으로 가져오는 함수
+ * @param pageSize 페이지 크기
+ * @param cursor 커서 (조회수 값)
+ * @returns Promise<{news: NewsItem[], nextCursor: number | null, hasMore: boolean}>
+ */
+export async function getPopularNewsPaginated(
+  pageSize: number, 
+  cursor?: number
+): Promise<{news: NewsItem[], nextCursor: number | null, hasMore: boolean}> {
+  try {
+    let query: admin.firestore.Query = db.collection('news');
+    
+    // 조회수 기준 내림차순 정렬
+    query = query.orderBy('viewCount', 'desc');
+    
+    // 커서가 있으면 해당 조회수보다 작은 값부터 조회
+    if (cursor !== undefined) {
+      query = query.startAfter(cursor);
+    }
+    
+    const snapshot = await query
+      .limit(pageSize + 1) // 다음 페이지 존재 여부 확인을 위해 1개 더 가져옴
+      .get();
+
+    const newsItems: NewsItem[] = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      newsItems.push({
+        title: data.title,
+        link: data.link,
+        description: data.description,
+        pubDate: data.pubDate,
+        guid: data.guid,
+        category: data.category,
+        mediaUrl: data.mediaUrl,
+        summary: data.summary,
+        summary3lines: data.summary3lines,
+        easySummary: data.easySummary,
+        entities: data.entities,
+        viewCount: data.viewCount || 0
+      });
+    });
+
+    // 다음 페이지 존재 여부 확인
+    const hasMore = newsItems.length > pageSize;
+    const news = hasMore ? newsItems.slice(0, pageSize) : newsItems;
+    
+    // 다음 페이지용 커서 생성 (마지막 문서의 조회수 사용)
+    let nextCursor: number | null = null;
+    if (hasMore && news.length > 0) {
+      const lastNews = news[news.length - 1];
+      nextCursor = lastNews.viewCount || 0;
+    }
+
+    return {
+      news,
+      nextCursor,
+      hasMore
+    };
+  } catch (error) {
+    logger.error("조회수 기준 뉴스 페이지네이션 조회 중 오류 발생:", error);
+    throw error;
+  }
+} 

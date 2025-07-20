@@ -159,19 +159,16 @@ class NewsListPage extends ConsumerWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.article_outlined,
-                            size: 64,
-                            color: AppColors.textTertiary,
-                          ),
-                          const SizedBox(height: 16),
+                          RoundedCircularProgress(),
+                          const SizedBox(height: 24),
                           Text(
-                            '뉴스가 없습니다',
+                            '최신 뉴스 목록을 가져오고 있습니다.\n곧 새로운 소식을 전해드릴게요.',
                             style: TextStyle(
                               fontSize: fontSize,
                               color: AppColors.textSecondary,
                               fontWeight: FontWeight.w500,
                             ),
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),

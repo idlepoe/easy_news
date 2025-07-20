@@ -1,7 +1,7 @@
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { fetchNewsFromRSS } from "../services/rssService";
-import { saveNewsToFirestore, getRecentNews, getNewsDetailById, increaseNewsViewCount, getNewsCount } from "../services/firestoreService";
+import { saveNewsToFirestore, getRecentNews, getNewsDetailById, increaseNewsViewCount, getNewsCount, getPopularNews, getPopularNewsPaginated } from "../services/firestoreService";
 import * as admin from "firebase-admin";
 
 /**
@@ -111,7 +111,7 @@ export const getNewsStatus = onRequest({
 
 /**
  * 뉴스 목록을 페이지네이션으로 반환하는 HTTP 함수
- * 쿼리: page(1부터), pageSize(기본 10, 최대 100), category(선택적), cursor(선택적)
+ * 쿼리: page(1부터), pageSize(기본 10, 최대 100), cursor(선택적), sortBy(선택적: 'date' 또는 'views')
  */
 export const getNewsListAPI = onRequest({
   timeoutSeconds: 60
@@ -120,35 +120,39 @@ export const getNewsListAPI = onRequest({
     logger.info("뉴스 목록 페이지네이션 조회 요청");
     const page = Math.max(1, parseInt(request.query.page as string) || 1);
     const pageSize = Math.min(Math.max(1, parseInt(request.query.pageSize as string) || 10), 100);
-    const category = request.query.category as string;
     const cursor = request.query.cursor as string; // 커서 기반 페이지네이션용
+    const sortBy = request.query.sortBy as string || 'date'; // 정렬 기준: 'date' 또는 'views'
     
-    let query = admin.firestore().collection('news').orderBy('pubDate', 'desc'); // pubDate 기준 내림차순
+    let query: admin.firestore.Query = admin.firestore().collection('news');
     
-    // 카테고리 필터링
-    if (category) {
-      if (category === 'politics') {
-        // 정치 카테고리만
-        query = query.where('category', '==', '정치');
-      } else if (category === 'all') {
-        // 정치 제외한 모든 카테고리
-        query = query.where('category', '!=', '정치');
-      }
+    // 정렬 기준에 따라 쿼리 설정
+    if (sortBy === 'views') {
+      // 조회수 기준 내림차순 정렬
+      query = query.orderBy('viewCount', 'desc');
+    } else {
+      // 기본값: 날짜 기준 내림차순 정렬
+      query = query.orderBy('pubDate', 'desc');
     }
     
     // 커서 기반 페이지네이션 적용
     if (cursor && page > 1) {
       try {
-        // 커서를 Timestamp로 변환
-        const cursorTimestamp = admin.firestore.Timestamp.fromMillis(parseInt(cursor));
-        query = query.startAfter(cursorTimestamp);
+        if (sortBy === 'views') {
+          // 조회수 기준 커서
+          const cursorValue = parseInt(cursor);
+          query = query.startAfter(cursorValue);
+        } else {
+          // 날짜 기준 커서
+          const cursorTimestamp = admin.firestore.Timestamp.fromMillis(parseInt(cursor));
+          query = query.startAfter(cursorTimestamp);
+        }
       } catch (error) {
         logger.warn("커서 파싱 실패, 첫 페이지부터 조회:", error);
       }
     }
     
     // 전체 개수 조회
-    const totalSize = await getNewsCount(category);
+    const totalSize = await getNewsCount();
     
     const snapshot = await query
       .limit(pageSize)
@@ -156,12 +160,18 @@ export const getNewsListAPI = onRequest({
     
     const news = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
-    // 다음 페이지용 커서 생성 (마지막 문서의 pubDate 사용)
+    // 다음 페이지용 커서 생성
     let nextCursor = null;
     if (news.length > 0 && news.length === pageSize) {
       const lastNews = news[news.length - 1] as any;
-      if (lastNews.pubDate && lastNews.pubDate._seconds) {
-        nextCursor = (lastNews.pubDate._seconds * 1000).toString();
+      if (sortBy === 'views') {
+        // 조회수 기준 커서
+        nextCursor = (lastNews.viewCount || 0).toString();
+      } else {
+        // 날짜 기준 커서
+        if (lastNews.pubDate && lastNews.pubDate._seconds) {
+          nextCursor = (lastNews.pubDate._seconds * 1000).toString();
+        }
       }
     }
     
@@ -174,7 +184,7 @@ export const getNewsListAPI = onRequest({
         count: news.length, 
         totalSize,
         news, 
-        category,
+        sortBy,
         nextCursor,
         hasMore: news.length === pageSize
       }
@@ -182,6 +192,78 @@ export const getNewsListAPI = onRequest({
   } catch (error) {
     logger.error("뉴스 목록 페이지네이션 조회 오류:", error);
     response.status(500).json({ success: false, message: "뉴스 목록 조회 오류", error: error instanceof Error ? error.message : error });
+  }
+});
+
+/**
+ * 조회수 기준으로 인기 뉴스를 가져오는 HTTP 함수
+ * 쿼리: limit(기본 10, 최대 100)
+ */
+export const getPopularNewsAPI = onRequest({
+  timeoutSeconds: 60
+}, async (request, response) => {
+  try {
+    logger.info("조회수 기준 인기 뉴스 조회 요청");
+    const limit = Math.min(Math.max(1, parseInt(request.query.limit as string) || 10), 100);
+    
+    const newsItems = await getPopularNews(limit);
+    
+    response.json({
+      success: true,
+      message: `${newsItems.length}건의 인기 뉴스를 반환합니다.`,
+      data: {
+        count: newsItems.length,
+        limit,
+        news: newsItems
+      }
+    });
+  } catch (error) {
+    logger.error("조회수 기준 인기 뉴스 조회 오류:", error);
+    response.status(500).json({ 
+      success: false, 
+      message: "인기 뉴스 조회 오류", 
+      error: error instanceof Error ? error.message : error 
+    });
+  }
+});
+
+/**
+ * 조회수 기준으로 뉴스 목록을 페이지네이션으로 반환하는 HTTP 함수
+ * 쿼리: pageSize(기본 10, 최대 100), cursor(선택적)
+ */
+export const getPopularNewsPaginatedAPI = onRequest({
+  timeoutSeconds: 60
+}, async (request, response) => {
+  try {
+    logger.info("조회수 기준 뉴스 페이지네이션 조회 요청");
+    const pageSize = Math.min(Math.max(1, parseInt(request.query.pageSize as string) || 10), 100);
+    const cursor = request.query.cursor as string; // 조회수 값
+    
+    let cursorValue: number | undefined;
+    if (cursor) {
+      cursorValue = parseInt(cursor);
+    }
+    
+    const result = await getPopularNewsPaginated(pageSize, cursorValue);
+    
+    response.json({
+      success: true,
+      message: `${result.news.length}건의 인기 뉴스를 반환합니다.`,
+      data: {
+        pageSize,
+        count: result.news.length,
+        news: result.news,
+        nextCursor: result.nextCursor,
+        hasMore: result.hasMore
+      }
+    });
+  } catch (error) {
+    logger.error("조회수 기준 뉴스 페이지네이션 조회 오류:", error);
+    response.status(500).json({ 
+      success: false, 
+      message: "인기 뉴스 페이지네이션 조회 오류", 
+      error: error instanceof Error ? error.message : error 
+    });
   }
 });
 
