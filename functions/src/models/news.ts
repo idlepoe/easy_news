@@ -9,6 +9,7 @@ export interface Entity {
 
 // 뉴스 아이템 인터페이스
 export interface NewsItem {
+  id?: string; // 문서 ID (선택적)
   title: string;
   link: string;
   description: string;

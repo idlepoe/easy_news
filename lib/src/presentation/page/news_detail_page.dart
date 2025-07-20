@@ -29,7 +29,6 @@ class NewsDetailPage extends ConsumerStatefulWidget {
 
 class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
   NewsEntity? selectedEntity;
-  bool _hasUpdatedViewCount = false;
   bool _isRefreshingDetail = false;
   bool _isLoadingDetail = false;
 
@@ -63,17 +62,6 @@ class _NewsDetailPageState extends ConsumerState<NewsDetailPage> {
     // TTS 정리
     _flutterTts?.stop();
     _scrollController.dispose();
-
-    // 화면을 나갈 때 조회수 업데이트
-    if (!_hasUpdatedViewCount) {
-      _hasUpdatedViewCount = true;
-      // 조회수 업데이트 (백그라운드에서 실행)
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ref.read(updateViewCountProvider(widget.newsId));
-        }
-      });
-    }
     super.dispose();
   }
 

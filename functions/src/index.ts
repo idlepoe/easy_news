@@ -10,7 +10,6 @@ export {
   fetchNewsManually, 
   getNewsListAPI, 
   getNewsDetailAPI, 
-  updateNewsViewCountAPI,
   getPopularNewsAPI,
   getPopularNewsPaginatedAPI
 } from './schedule/httpFunctions';

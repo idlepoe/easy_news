@@ -223,7 +223,47 @@ class NewsRepositoryImpl implements NewsRepository {
   }
 
   @override
-  Future<void> updateViewCount(String id) async {
-    await apiSource.updateViewCount(id);
+  Future<List<News>> getPopularNews({
+    int limit = 10,
+    String period = 'all',
+  }) async {
+    final response = await apiSource.fetchPopularNews(
+      limit: limit,
+      period: period,
+    );
+    final list = response['news'] as List;
+
+    return list
+        .map(
+          (e) => News(
+            id: e['id'] ?? '',
+            title: e['title'] ?? '',
+            description: e['description'] ?? '',
+            link: e['link'] ?? '',
+            mediaUrl: e['mediaUrl'] ?? '',
+            category: e['category'] ?? '',
+            pubDate: e['pubDate'] != null
+                ? DateTime.fromMillisecondsSinceEpoch(
+                    e['pubDate']['_seconds'] * 1000,
+                  )
+                : DateTime.now(),
+            summary: e['summary'],
+            summary3lines: e['summary3lines'],
+            easySummary: e['easySummary'],
+            entities: e['entities'] != null
+                ? (e['entities'] as List)
+                      .map(
+                        (entity) => NewsEntity(
+                          text: entity['text'] ?? '',
+                          type: entity['type'] ?? '',
+                          description: entity['description'] ?? '',
+                        ),
+                      )
+                      .toList()
+                : null,
+            viewCount: e['viewCount'] ?? 0,
+          ),
+        )
+        .toList();
   }
 }

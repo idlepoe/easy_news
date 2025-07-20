@@ -197,7 +197,7 @@ export const getNewsListAPI = onRequest({
 
 /**
  * 조회수 기준으로 인기 뉴스를 가져오는 HTTP 함수
- * 쿼리: limit(기본 10, 최대 100)
+ * 쿼리: limit(기본 10, 최대 100), period(선택적: '24h', '7d', '30d', 'all')
  */
 export const getPopularNewsAPI = onRequest({
   timeoutSeconds: 60
@@ -205,8 +205,19 @@ export const getPopularNewsAPI = onRequest({
   try {
     logger.info("조회수 기준 인기 뉴스 조회 요청");
     const limit = Math.min(Math.max(1, parseInt(request.query.limit as string) || 10), 100);
+    const period = request.query.period as string || 'all'; // 기간 필터
     
-    const newsItems = await getPopularNews(limit);
+    // 기간 파라미터 검증
+    const validPeriods = ['24h', '7d', '30d', 'all'];
+    if (!validPeriods.includes(period)) {
+      response.status(400).json({ 
+        success: false, 
+        message: "잘못된 기간 파라미터입니다. '24h', '7d', '30d', 'all' 중 하나를 사용하세요." 
+      });
+      return;
+    }
+    
+    const newsItems = await getPopularNews(limit, period);
     
     response.json({
       success: true,
@@ -214,6 +225,7 @@ export const getPopularNewsAPI = onRequest({
       data: {
         count: newsItems.length,
         limit,
+        period,
         news: newsItems
       }
     });
@@ -229,7 +241,7 @@ export const getPopularNewsAPI = onRequest({
 
 /**
  * 조회수 기준으로 뉴스 목록을 페이지네이션으로 반환하는 HTTP 함수
- * 쿼리: pageSize(기본 10, 최대 100), cursor(선택적)
+ * 쿼리: pageSize(기본 10, 최대 100), cursor(선택적), period(선택적: '24h', '7d', '30d', 'all')
  */
 export const getPopularNewsPaginatedAPI = onRequest({
   timeoutSeconds: 60
@@ -238,13 +250,24 @@ export const getPopularNewsPaginatedAPI = onRequest({
     logger.info("조회수 기준 뉴스 페이지네이션 조회 요청");
     const pageSize = Math.min(Math.max(1, parseInt(request.query.pageSize as string) || 10), 100);
     const cursor = request.query.cursor as string; // 조회수 값
+    const period = request.query.period as string || 'all'; // 기간 필터
+    
+    // 기간 파라미터 검증
+    const validPeriods = ['24h', '7d', '30d', 'all'];
+    if (!validPeriods.includes(period)) {
+      response.status(400).json({ 
+        success: false, 
+        message: "잘못된 기간 파라미터입니다. '24h', '7d', '30d', 'all' 중 하나를 사용하세요." 
+      });
+      return;
+    }
     
     let cursorValue: number | undefined;
     if (cursor) {
       cursorValue = parseInt(cursor);
     }
     
-    const result = await getPopularNewsPaginated(pageSize, cursorValue);
+    const result = await getPopularNewsPaginated(pageSize, cursorValue, period);
     
     response.json({
       success: true,
@@ -252,6 +275,7 @@ export const getPopularNewsPaginatedAPI = onRequest({
       data: {
         pageSize,
         count: result.news.length,
+        period,
         news: result.news,
         nextCursor: result.nextCursor,
         hasMore: result.hasMore
@@ -295,25 +319,4 @@ export const getNewsDetailAPI = onRequest({
   }
 });
 
-/**
- * 조회수만 업데이트하는 HTTP 함수
- * 쿼리: docId(필수)
- */
-export const updateNewsViewCountAPI = onRequest({
-  timeoutSeconds: 30
-}, async (request, response) => {
-  try {
-    const docId = request.query.docId as string;
-    if (!docId) {
-      response.status(400).json({ success: false, message: "docId 파라미터가 필요합니다." });
-      return;
-    }
-    
-    // 조회수 증가
-    await increaseNewsViewCount(docId);
-    response.json({ success: true, message: "조회수 업데이트 완료" });
-  } catch (error) {
-    logger.error("조회수 업데이트 오류:", error);
-    response.status(500).json({ success: false, message: "조회수 업데이트 오류", error: error instanceof Error ? error.message : error });
-  }
-}); 
+ 

@@ -9,5 +9,5 @@ abstract class NewsRepository {
     String? cursor,
   });
   Future<News> getNewsDetail(String id);
-  Future<void> updateViewCount(String id);
+  Future<List<News>> getPopularNews({int limit = 10, String period = 'all'});
 }

@@ -216,11 +216,37 @@ export async function increaseNewsViewCount(docId: string): Promise<void> {
 /**
  * 조회수 기준으로 뉴스를 가져오는 함수
  * @param limit 가져올 뉴스 개수 (기본값: 10)
+ * @param period 기간 필터 ('24h', '7d', '30d', 'all')
  * @returns Promise<NewsItem[]> 뉴스 아이템 배열
  */
-export async function getPopularNews(limit: number = 10): Promise<NewsItem[]> {
+export async function getPopularNews(limit: number = 10, period: string = 'all'): Promise<NewsItem[]> {
   try {
-    const snapshot = await db.collection('news')
+    let query: admin.firestore.Query = db.collection('news');
+    
+    // 기간별 필터링
+    if (period !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (period) {
+        case '24h':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(0); // 모든 기간
+      }
+      
+      const startTimestamp = admin.firestore.Timestamp.fromDate(startDate);
+      query = query.where('pubDate', '>=', startTimestamp);
+    }
+    
+    const snapshot = await query
       .orderBy('viewCount', 'desc')
       .limit(limit)
       .get();
@@ -229,6 +255,7 @@ export async function getPopularNews(limit: number = 10): Promise<NewsItem[]> {
     snapshot.forEach(doc => {
       const data = doc.data();
       newsItems.push({
+        id: doc.id, // 문서 ID 추가
         title: data.title,
         link: data.link,
         description: data.description,
@@ -255,14 +282,39 @@ export async function getPopularNews(limit: number = 10): Promise<NewsItem[]> {
  * 조회수 기준으로 뉴스 목록을 페이지네이션으로 가져오는 함수
  * @param pageSize 페이지 크기
  * @param cursor 커서 (조회수 값)
+ * @param period 기간 필터 ('24h', '7d', '30d', 'all')
  * @returns Promise<{news: NewsItem[], nextCursor: number | null, hasMore: boolean}>
  */
 export async function getPopularNewsPaginated(
   pageSize: number, 
-  cursor?: number
+  cursor?: number,
+  period: string = 'all'
 ): Promise<{news: NewsItem[], nextCursor: number | null, hasMore: boolean}> {
   try {
     let query: admin.firestore.Query = db.collection('news');
+    
+    // 기간별 필터링
+    if (period !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (period) {
+        case '24h':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(0); // 모든 기간
+      }
+      
+      const startTimestamp = admin.firestore.Timestamp.fromDate(startDate);
+      query = query.where('createdAt', '>=', startTimestamp);
+    }
     
     // 조회수 기준 내림차순 정렬
     query = query.orderBy('viewCount', 'desc');
@@ -280,6 +332,7 @@ export async function getPopularNewsPaginated(
     snapshot.forEach(doc => {
       const data = doc.data();
       newsItems.push({
+        id: doc.id, // 문서 ID 추가
         title: data.title,
         link: data.link,
         description: data.description,

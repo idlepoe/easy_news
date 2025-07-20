@@ -39,16 +39,20 @@ class NewsApiSource {
     return response.data['data'] as Map<String, dynamic>;
   }
 
-  // 조회수 업데이트 메서드 추가
-  Future<void> updateViewCount(String id) async {
-    try {
-      await dio.post(
-        'https://updatenewsviewcountapi-z54jot6a5a-uc.a.run.app/',
-        queryParameters: {'docId': id},
-      );
-    } catch (e) {
-      // 조회수 업데이트 실패는 무시 (사용자 경험에 영향 없음)
-      print('조회수 업데이트 실패: $e');
-    }
+  // 인기뉴스 조회 메서드 추가
+  Future<Map<String, dynamic>> fetchPopularNews({
+    int limit = 10,
+    String period = 'all',
+  }) async {
+    final queryParams = <String, dynamic>{
+      'limit': limit,
+      'period': period,
+    };
+
+    final response = await dio.get(
+      'https://getpopularnewsapi-z54jot6a5a-uc.a.run.app/',
+      queryParameters: queryParams,
+    );
+    return response.data['data'] as Map<String, dynamic>;
   }
 }

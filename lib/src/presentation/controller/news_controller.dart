@@ -59,11 +59,8 @@ final newsDetailProvider = FutureProvider.family<News, String>((ref, id) async {
   return useCase(id);
 });
 
-// 조회수 업데이트 프로바이더
-final updateViewCountProvider = FutureProvider.family<void, String>((
-  ref,
-  id,
-) async {
+// 인기뉴스 프로바이더 (일주일 내)
+final popularNewsProvider = FutureProvider<List<News>>((ref) async {
   final repository = ref.watch(newsRepositoryProvider);
-  return repository.updateViewCount(id);
+  return repository.getPopularNews(limit: 10, period: '7d');
 });

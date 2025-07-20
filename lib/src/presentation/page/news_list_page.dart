@@ -15,6 +15,8 @@ import '../widgets/refresh_status_card.dart';
 import '../controller/font_size_provider.dart';
 import '../page/settings_screen.dart'; // Added import for SettingsScreen
 import '../controller/theme_mode_provider.dart'; // Added import for ThemeModeProvider
+import '../controller/news_controller.dart'; // Added import for popularNewsProvider
+import 'package:marquee/marquee.dart';
 
 class NewsListPage extends ConsumerWidget {
   const NewsListPage({super.key});
@@ -136,7 +138,198 @@ class NewsListPage extends ConsumerWidget {
     );
   }
 
+  Widget _buildPopularNewsSection(BuildContext context, double fontSize) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final popularNewsAsync = ref.watch(popularNewsProvider);
+
+        return popularNewsAsync.when(
+          data: (popularNews) {
+            if (popularNews.isEmpty) return const SizedBox.shrink();
+
+            return Container(
+              margin: const EdgeInsets.fromLTRB(0, 0, 0, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 섹션 헤더
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '이번 주 인기뉴스',
+                        style: TextStyle(
+                          fontSize: fontSize + 1,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).textTheme.titleLarge?.color,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'TOP 10',
+                        style: TextStyle(
+                          fontSize: fontSize - 2,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // 인기뉴스 그리드
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 4.0,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 6,
+                        ),
+                    itemCount: popularNews.length,
+                    itemBuilder: (context, index) {
+                      final news = popularNews[index];
+                      return _buildPopularNewsCard(
+                        context,
+                        news,
+                        index + 1,
+                        fontSize,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+          loading: () => Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '이번 주 인기뉴스',
+                      style: TextStyle(
+                        fontSize: fontSize + 2,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).textTheme.titleLarge?.color,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Center(child: RoundedCircularProgress()),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+          error: (error, stack) => const SizedBox.shrink(),
+        );
+      },
+    );
+  }
+
+  Widget _buildPopularNewsCard(
+    BuildContext context,
+    News news,
+    int rank,
+    double fontSize,
+  ) {
+    return Consumer(
+      builder: (context, ref, child) {
+        return GestureDetector(
+          onTap: () {
+            // 상세 화면으로 이동
+            context.push('/news/${news.id}', extra: news);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withOpacity(0.1),
+                width: 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  // 순위 표시
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: rank <= 3 ? AppColors.primary : AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$rank',
+                        style: TextStyle(
+                          fontSize: fontSize - 3,
+                          fontWeight: FontWeight.w700,
+                          color: rank <= 3
+                              ? AppColors.white
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // 뉴스 제목 (Marquee)
+                  Expanded(
+                    child: Marquee(
+                      text: news.title,
+                      style: TextStyle(
+                        fontSize: fontSize - 1,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).textTheme.titleMedium?.color,
+                        height: 1.2,
+                      ),
+                      scrollAxis: Axis.horizontal,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      blankSpace: 20.0,
+                      velocity: 30.0,
+                      pauseAfterRound: const Duration(seconds: 1),
+                      startPadding: 10.0,
+                      accelerationDuration: const Duration(seconds: 1),
+                      accelerationCurve: Curves.linear,
+                      decelerationDuration: const Duration(milliseconds: 500),
+                      decelerationCurve: Curves.easeOut,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildNewsTab(
+    BuildContext context,
     AsyncValue<List<News>> newsListAsync,
     NewsListNotifier newsListNotifier,
     double fontSize,
@@ -147,101 +340,98 @@ class NewsListPage extends ConsumerWidget {
       color: AppColors.primary,
       backgroundColor: AppColors.white,
       child: newsListAsync.when(
-        data: (newsList) => Column(
-          children: [
-            // 갱신 상태 카드 표시
-            if (newsListNotifier.isRefreshing)
-              RefreshStatusCard(message: '데이터를 갱신하고 있습니다...', onDismiss: () {}),
-            // 뉴스 목록
-            Expanded(
-              child: newsList.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          RoundedCircularProgress(),
-                          const SizedBox(height: 24),
-                          Text(
-                            '최신 뉴스 목록을 가져오고 있습니다.\n곧 새로운 소식을 전해드릴게요.',
-                            style: TextStyle(
-                              fontSize: fontSize,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+        data: (newsList) => newsList.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    RoundedCircularProgress(),
+                    const SizedBox(height: 24),
+                    Text(
+                      '최신 뉴스 목록을 가져오고 있습니다.\n곧 새로운 소식을 전해드릴게요.',
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
-                    )
-                  : NotificationListener<ScrollNotification>(
-                      onNotification: (ScrollNotification scrollInfo) {
-                        if (scrollInfo.metrics.pixels ==
-                            scrollInfo.metrics.maxScrollExtent) {
-                          if (newsListNotifier.hasMore &&
-                              !newsListNotifier.isLoading) {
-                            newsListNotifier.loadMoreNews();
-                          }
-                        }
-                        return false;
-                      },
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount:
-                            newsList.length +
-                            (newsListNotifier.hasMore ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index == newsList.length) {
-                            return const Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: Center(child: RoundedCircularProgress()),
-                            );
-                          }
-                          final news = newsList[index];
-                          Widget? subtitle;
-                          switch (bodyType) {
-                            case NewsBodyDisplayType.description:
-                              subtitle = Text(
-                                news.description,
-                                maxLines: 5,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: fontSize),
-                              );
-                              break;
-                            case NewsBodyDisplayType.summary:
-                              subtitle = Text(
-                                news.summary!,
-                                style: TextStyle(fontSize: fontSize),
-                              );
-                              break;
-                            case NewsBodyDisplayType.summary3lines:
-                              subtitle = Text(
-                                (news.summary3lines ?? '').trim(),
-                                style: TextStyle(fontSize: fontSize),
-                              );
-                              break;
-                            case NewsBodyDisplayType.easySummary:
-                              subtitle = Text(
-                                (news.easySummary ?? '').trim(),
-                                style: TextStyle(fontSize: fontSize),
-                              );
-                              break;
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: NewsCard(
-                              news: news,
-                              subtitle: subtitle,
-                              onTap: () {
-                                context.push('/news/${news.id}', extra: news);
-                              },
-                            ),
-                          );
-                        },
-                      ),
+                      textAlign: TextAlign.center,
                     ),
-            ),
-          ],
-        ),
+                  ],
+                ),
+              )
+            : NotificationListener<ScrollNotification>(
+                onNotification: (ScrollNotification scrollInfo) {
+                  if (scrollInfo.metrics.pixels ==
+                      scrollInfo.metrics.maxScrollExtent) {
+                    if (newsListNotifier.hasMore &&
+                        !newsListNotifier.isLoading) {
+                      newsListNotifier.loadMoreNews();
+                    }
+                  }
+                  return false;
+                },
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // 갱신 상태 카드 표시
+                    if (newsListNotifier.isRefreshing)
+                      RefreshStatusCard(
+                        message: '데이터를 갱신하고 있습니다...',
+                        onDismiss: () {},
+                      ),
+                    // 인기뉴스 섹션
+                    _buildPopularNewsSection(context, fontSize),
+                    // 뉴스 목록
+                    ...newsList.map((news) {
+                      Widget? subtitle;
+                      switch (bodyType) {
+                        case NewsBodyDisplayType.description:
+                          subtitle = Text(
+                            news.description,
+                            maxLines: 5,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: fontSize),
+                          );
+                          break;
+                        case NewsBodyDisplayType.summary:
+                          subtitle = Text(
+                            news.summary!,
+                            style: TextStyle(fontSize: fontSize),
+                          );
+                          break;
+                        case NewsBodyDisplayType.summary3lines:
+                          subtitle = Text(
+                            (news.summary3lines ?? '').trim(),
+                            style: TextStyle(fontSize: fontSize),
+                          );
+                          break;
+                        case NewsBodyDisplayType.easySummary:
+                          subtitle = Text(
+                            (news.easySummary ?? '').trim(),
+                            style: TextStyle(fontSize: fontSize),
+                          );
+                          break;
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: NewsCard(
+                          news: news,
+                          subtitle: subtitle,
+                          onTap: () {
+                            context.push('/news/${news.id}', extra: news);
+                          },
+                        ),
+                      );
+                    }).toList(),
+                    // 로딩 인디케이터
+                    if (newsListNotifier.hasMore)
+                      const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: RoundedCircularProgress()),
+                      ),
+                  ],
+                ),
+              ),
         loading: () => const Center(child: RoundedCircularProgress()),
         error: (e, _) => Center(
           child: Column(
@@ -311,6 +501,7 @@ class NewsListPage extends ConsumerWidget {
         ],
       ),
       body: _buildNewsTab(
+        context,
         ref.watch(allNewsListProvider),
         ref.read(allNewsListProvider.notifier),
         fontSize,
