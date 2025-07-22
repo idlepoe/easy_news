@@ -114,7 +114,8 @@ export const getNewsStatus = onRequest({
  * 쿼리: page(1부터), pageSize(기본 10, 최대 100), cursor(선택적), sortBy(선택적: 'date' 또는 'views')
  */
 export const getNewsListAPI = onRequest({
-  timeoutSeconds: 60
+  timeoutSeconds: 60,
+  memory: '512MiB'
 }, async (request, response) => {
   try {
     logger.info("뉴스 목록 페이지네이션 조회 요청");

@@ -11,7 +11,6 @@ export {
   getNewsListAPI, 
   getNewsDetailAPI, 
   getPopularNewsAPI,
-  getPopularNewsPaginatedAPI
 } from './schedule/httpFunctions';
 
 // utils export (내부 사용용)
